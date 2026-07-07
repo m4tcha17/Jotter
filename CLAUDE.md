@@ -2,6 +2,7 @@
 
 ## What this project is
 
+A mobile app for capturing photos and logging structured data against them, organized into projects with a fully user-customizable field schema and bundled CSV export, built for field researchers unfamiliar with technology.
 
 ## Stack
 Expo, React Native, Supabase, TypeScript
@@ -14,3 +15,5 @@ Expo, React Native, Supabase, TypeScript
 - Ask before touching files outside the current task scope
 
 ## Current task
+
+No active task yet — see docs/current-task.md.
