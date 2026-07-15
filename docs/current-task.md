@@ -1,40 +1,35 @@
 # Current Task
 
-**Empty-state → project creation flow — done, on-device testing still needed.**
+**Samples / Single Shot vs Multi Shot — schema and project-creation config done; on-device testing still needed.**
 
-Navigation is now two-level, per `docs/architecture.md`'s Navigation Structure:
-- **Outer level**: `navigation/MainTabs.tsx` — bottom tabs `Projects` / `Account`, shown right after sign-in.
-  - `screens/ProjectsScreen.tsx` — if the signed-in user has zero projects, shows the "Start Gathering Data" empty state; otherwise a tappable project list (color dot + name).
-  - `screens/AccountScreen.tsx` — the account-info content that used to live in `HomeScreen.tsx` (now deleted; folded in here). Sign-out lives here.
-- **Project creation**: `screens/CreateProjectScreen.tsx` — one screen for name, color (preset swatch picker, no color-picker library needed), and an "+ Add Field" flow (`components/AddFieldModal.tsx`) covering all 7 data types, with inline category creation (name, Global/Field-only toggle, options list) or picking an existing global category. On save, shows a "Project has been created" alert, then redirects into `screens/ProjectHomeScreen.tsx` (placeholder — the real Capture/Fields/Data inner tabs are a separate follow-up task).
-- `lib/projects.ts` — `fetchProjects`, `fetchGlobalCategories`, `createProject` (inserts the project, then any new categories + their options, then the fields, in sequence) — talks to Supabase **directly**, not through local SQLite.
+Generalizes a personal-use requirement (one physical sample = 6 photos: top, bottom, 4 sides) into a project-configurable feature, rather than hardcoding any particular count/naming:
 
-**Deliberate scope decisions from this task:**
-- Dependent category fields (the `field_category_rules` threshold/range builder) were explicitly deferred — the category flow here only covers picking/creating a category, not making one derive from a `number` field. Follow-up task.
-- Camera calibration (locked ISO/shutter/white-balance/resolution/target-angle) is explicitly **not** part of project creation — deferred to whenever Capture is first opened for a project, confirmed by the user and reflected in `docs/architecture.md`.
-- **Writes go straight to Supabase, bypassing the offline-first SQLite layer** described in `docs/architecture.md`'s Offline & Sync Strategy — because the "Local SQLite schema" build step (still queued, see below) hasn't happened yet, and building the full local-first + sync layer in the same pass as this UI would have been too much at once. This is a known, temporary architecture deviation: `createProject` will need to be refactored to write-through-local-first once SQLite lands, not a permanent design choice.
-- Icon/branding assets — explicitly the user's responsibility, not mine.
+- **Data model restructure**: replaced the old one-photo-per-row `entries`/`entry_values` tables with `capture_slots` (defines the named photo positions that make up one complete sample for a project — e.g. "Top", "Side 1"), `samples` (the actual unit of data, replacing `entries`), `sample_photos` (one photo per sample × slot), and `sample_values` (replacing `entry_values` — field data shared across a sample's photos, not per-photo). `projects.target_angle_degrees` (project-wide) was removed in favor of a per-slot `capture_slots.target_angle_degrees`, since different slots (e.g. a top-down shot vs. a side shot) can need different tilt targets. Migration: `supabase/migrations/20260715140209_samples_and_capture_slots.sql`, pushed and verified live. `docs/schema.sql` and `docs/architecture.md` (Data Model, Capture flow, Export sections) all updated to match.
+- **`projects.capture_mode`** (`single` | `multi`, default `single`) governs which UI a project gets. Single Shot behaves exactly like the app already did (one photo, then the form) via one auto-created, hidden capture slot — no new complexity for projects that don't need it. Multi Shot exposes a capture-plan builder.
+- **`screens/CreateProjectScreen.tsx`**: new "Photos per sample" section — Single Shot / Multi Shot toggle; Multi Shot reveals a slot builder (name + optional target angle per slot, add/remove).
+- **`lib/projects.ts`**: `createProject` now takes `captureMode`/`captureSlots` and creates the appropriate `capture_slots` rows (one generic "Photo" slot for single-shot, or the researcher-defined list for multi-shot).
 
-**Schema changes made this task:**
-- `projects.color` (text, nullable) added via `supabase/migrations/20260710072317_add_project_color.sql`, pushed live and reflected in `docs/schema.sql`/`docs/architecture.md`.
-- Also fixed a pre-existing drift found while verifying the database against `docs/schema.sql`: `projects.camera_resolution_width`/`camera_resolution_height` existed in the doc but not the live table (added to the doc after the initial manual SQL Editor run) — closed via `20260710070845_add_camera_resolution_columns.sql`.
+**Important limitation, documented in `docs/architecture.md`'s Capture flow**: angle-assist (phone tilt via `expo-sensors`) can only verify pitch/roll — it can confirm something like a top-down "Top" shot, but has no way to verify physical position (e.g. "am I on the correct side of the object" for a "Side 2" slot). That's on the researcher to get right physically (e.g. via markings on a rig); not a software gap to try to close.
+
+**Not yet built**: the actual Capture screen that walks through slots, takes photos, and shows the shared form — still blocked on the camera hardware spike + native manual-exposure module (unchanged from before). This task only covers the data model and the project-creation-time configuration of capture mode/slots.
 
 **Not yet done / acceptance criteria before calling this finished:**
-- On-device testing of the whole flow: empty state → create project (with at least one of each field data type, plus both new and existing categories) → confirmation → redirect into `ProjectHome`, then back to `Projects` showing the new project in the list.
-- Confirm `useFocusEffect`-driven refetch in `ProjectsScreen` actually shows a newly created project immediately after returning from `ProjectHome`.
+- On-device testing: create a Multi Shot project with several named slots (including one with a target angle) and confirm they save correctly; create a Single Shot project and confirm no slot-builder UI appears and it still works exactly as before.
 
-**Known gaps, not blocking:**
-- Guest-to-OAuth/email identity linking is still not implemented — every sign-in method starts a fresh session.
+**Known gaps, not blocking (carried over from previous tasks):**
+- Writes still go straight to Supabase, bypassing the offline-first SQLite layer — same deliberate, temporary deviation as before, now also applying to `samples`/`capture_slots`/etc.
+- Guest-to-OAuth/email identity linking is still not implemented.
+- Dependent category fields, camera calibration — still deferred (see below).
 
 ## Suggested build order (after this task)
-1. ~~Navigation shell~~ / ~~Empty-state → project creation~~ — done above.
-2. Local SQLite schema + typed data-access layer (`projects`, `categories`, `category_options`, `fields`, `entries`, `entry_values`) — **now overdue**, since `lib/projects.ts` currently writes straight to Supabase and needs refactoring once this lands.
+1. ~~Navigation shell~~ / ~~Empty-state → project creation~~ / ~~Samples & capture modes~~ — done above.
+2. Local SQLite schema + typed data-access layer (`projects`, `categories`, `category_options`, `fields`, `capture_slots`, `samples`, `sample_photos`, `sample_values`) — **now overdue**, since `lib/projects.ts` currently writes straight to Supabase and needs refactoring once this lands.
 3. Camera hardware capability spike — verify Camera2 `INFO_SUPPORTED_HARDWARE_LEVEL` on the actual field device(s) before investing in the native manual-exposure module; `LEGACY`-level devices can't do manual exposure at all.
 4. Guest → registered upgrade flow via Supabase identity linking (not yet built — current Log In/Sign Up/OAuth are separate accounts, not an upgrade path).
-5. Dependent category fields — let a category field derive its value from a `number` field via threshold/range rules (`field_category_rules`), auto-filled but overridable in Capture. Deferred from this task.
-6. Real inner-level tabs for an open project — Capture (angle-assist → native manual-exposure camera capture → logging form), Fields (persistent schema editor, not just at creation), Data (table view + CSV/zip export) — replacing the `ProjectHomeScreen` placeholder.
-7. Camera calibration screen — locked ISO/shutter/white-balance/resolution/target-angle, whenever Capture is first opened for a project.
-8. Supabase sync — push/pull unsynced rows, photo upload to Storage (this is where the offline-first SQLite layer and the direct-to-Supabase code from this task converge).
+5. Dependent category fields — let a category field derive its value from a `number` field via threshold/range rules (`field_category_rules`), auto-filled but overridable in Capture.
+6. Real inner-level tabs for an open project — Capture (per-slot angle-assist where applicable → native manual-exposure camera capture, walking through all of a project's `capture_slots` → shared logging form once the sample is complete), Fields (persistent schema editor, not just at creation), Data (table view + CSV/zip export, one row per sample with one photo column per slot) — replacing the `ProjectHomeScreen` placeholder.
+7. Camera calibration screen — locked ISO/shutter/white-balance/resolution, whenever Capture is first opened for a project.
+8. Supabase sync — push/pull unsynced rows, photo upload to Storage (this is where the offline-first SQLite layer and the direct-to-Supabase code converge).
 9. Project sharing — invite collaborator by email, `project_members` UI/flow. (RLS policies already exist in `docs/schema.sql`.)
 
 When the user assigns the next concrete task, replace this file's content with that task's specific scope and acceptance criteria.

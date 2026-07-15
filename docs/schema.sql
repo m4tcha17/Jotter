@@ -21,7 +21,7 @@ create table projects (
   camera_white_balance text,
   camera_resolution_width integer,
   camera_resolution_height integer,
-  target_angle_degrees numeric,
+  capture_mode text not null default 'single' check (capture_mode in ('single', 'multi')),
   created_at timestamptz not null default now(),
   synced_at timestamptz
 );
@@ -91,23 +91,53 @@ create table field_category_rules (
 );
 create index field_category_rules_field_id_idx on field_category_rules(field_id);
 
-create table entries (
+-- capture_slots: defines the "shape" of one complete sample for a project — an ordered
+-- list of named photo positions (e.g. Top, Bottom, Side 1..4). A `single`-capture_mode
+-- project has exactly one auto-created slot (the app never shows slot-building UI for
+-- it); a `multi`-capture_mode project's researcher defines these themselves.
+create table capture_slots (
   id uuid primary key default gen_random_uuid(),
   project_id uuid not null references projects(id) on delete cascade,
-  photo_local_uri text,
-  photo_remote_url text,
+  label text not null,
+  target_angle_degrees numeric,
+  sort_order integer not null,
+  synced_at timestamptz,
+  unique (project_id, label)
+);
+create index capture_slots_project_id_idx on capture_slots(project_id);
+
+-- samples: the actual unit of data — one set of field values (via sample_values) shared
+-- across every photo taken for it. Replaces the old single-photo-per-row `entries` table.
+create table samples (
+  id uuid primary key default gen_random_uuid(),
+  project_id uuid not null references projects(id) on delete cascade,
   created_at timestamptz not null default now(),
   synced_at timestamptz
 );
-create index entries_project_id_idx on entries(project_id);
+create index samples_project_id_idx on samples(project_id);
 
-create table entry_values (
-  entry_id uuid not null references entries(id) on delete cascade,
+-- sample_photos: one photo per (sample, capture_slot) pair — a sample is "complete" once
+-- it has a photo for every capture_slot defined by its project.
+create table sample_photos (
+  id uuid primary key default gen_random_uuid(),
+  sample_id uuid not null references samples(id) on delete cascade,
+  capture_slot_id uuid not null references capture_slots(id) on delete restrict,
+  photo_local_uri text,
+  photo_remote_url text,
+  created_at timestamptz not null default now(),
+  synced_at timestamptz,
+  unique (sample_id, capture_slot_id)
+);
+create index sample_photos_sample_id_idx on sample_photos(sample_id);
+create index sample_photos_capture_slot_id_idx on sample_photos(capture_slot_id);
+
+create table sample_values (
+  sample_id uuid not null references samples(id) on delete cascade,
   field_id uuid not null references fields(id) on delete cascade,
   value text,
-  primary key (entry_id, field_id)
+  primary key (sample_id, field_id)
 );
-create index entry_values_field_id_idx on entry_values(field_id);
+create index sample_values_field_id_idx on sample_values(field_id);
 
 -- Row Level Security
 --
@@ -138,8 +168,10 @@ alter table categories enable row level security;
 alter table category_options enable row level security;
 alter table fields enable row level security;
 alter table field_category_rules enable row level security;
-alter table entries enable row level security;
-alter table entry_values enable row level security;
+alter table capture_slots enable row level security;
+alter table samples enable row level security;
+alter table sample_photos enable row level security;
+alter table sample_values enable row level security;
 
 -- projects: owner manages the project itself; members can only view it.
 create policy "projects_select" on projects for select
@@ -218,10 +250,18 @@ create policy "field_category_rules_all" on field_category_rules for all
   using (exists (select 1 from fields f where f.id = field_id and is_project_member(f.project_id)))
   with check (exists (select 1 from fields f where f.id = field_id and is_project_member(f.project_id)));
 
-create policy "entries_all" on entries for all
+create policy "capture_slots_all" on capture_slots for all
   using (is_project_member(project_id))
   with check (is_project_member(project_id));
 
-create policy "entry_values_all" on entry_values for all
-  using (exists (select 1 from entries e where e.id = entry_id and is_project_member(e.project_id)))
-  with check (exists (select 1 from entries e where e.id = entry_id and is_project_member(e.project_id)));
+create policy "samples_all" on samples for all
+  using (is_project_member(project_id))
+  with check (is_project_member(project_id));
+
+create policy "sample_photos_all" on sample_photos for all
+  using (exists (select 1 from samples s where s.id = sample_id and is_project_member(s.project_id)))
+  with check (exists (select 1 from samples s where s.id = sample_id and is_project_member(s.project_id)));
+
+create policy "sample_values_all" on sample_values for all
+  using (exists (select 1 from samples s where s.id = sample_id and is_project_member(s.project_id)))
+  with check (exists (select 1 from samples s where s.id = sample_id and is_project_member(s.project_id)));
