@@ -1,4 +1,4 @@
-# DataSnap
+# Jotter
 
 A mobile data-collection app: capture photos, log structured data against them, and export to CSV. See `docs/architecture.md` for the full design, `docs/current-task.md` for what's currently being built, and `docs/schema.sql` for the database schema.
 
@@ -90,7 +90,7 @@ Useful for quickly checking screen layout/styling in a browser. Not a real deplo
 3. If testing over USB with Wi-Fi off, make sure you used `--host localhost` (see above).
 4. Pull logs to see the real error instead of guessing:
    ```bash
-   adb logcat --pid=$(adb shell pidof com.m4tcha.datasnap) -d -t 500 | grep -iE "ReactNativeJS|error|exception|fatal"
+   adb logcat --pid=$(adb shell pidof com.m4tcha.jotter) -d -t 500 | grep -iE "ReactNativeJS|error|exception|fatal"
    ```
 5. A `ClassNotFoundException` for an Expo module (e.g. `expo.modules.splashscreen.SplashScreenManager`) usually means a required package (like `expo-splash-screen`) isn't installed — install it, then `expo prebuild --clean` and rebuild.
 6. Take a screenshot to see what's actually on screen:
@@ -100,4 +100,4 @@ Useful for quickly checking screen layout/styling in a browser. Not a real deplo
 
 **Anonymous ("Continue as Guest") sign-in fails:** confirm Anonymous Sign-Ins are enabled in Supabase → Authentication → Sign In / Providers.
 
-**Google/GitHub sign-in fails:** confirm both providers are enabled in Supabase → Authentication → Providers, with the correct Client ID/Secret, and that `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` is set in `.env.local` for Google, and `datasnap://**` is in Supabase's allowed Redirect URLs for GitHub.
+**Google/GitHub sign-in fails:** confirm both providers are enabled in Supabase → Authentication → Providers, with the correct Client ID/Secret, and that `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` is set in `.env.local` for Google, and `jotter://**` is in Supabase's allowed Redirect URLs for GitHub.

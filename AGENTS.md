@@ -2,7 +2,7 @@
 
 Read the exact versioned docs at https://docs.expo.dev/versions/v56.0.0/ before writing any code.
 
-# What DataSnap is
+# What Jotter is
 
 A mobile app for capturing photos and logging structured data against them, organized into projects with a fully user-customizable field schema and bundled CSV export, built for field researchers unfamiliar with technology. Framed as a general-purpose data-collection tool — never mention "thesis" in code, comments, UI copy, or commit messages.
 

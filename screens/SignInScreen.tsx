@@ -1,7 +1,7 @@
-import { FontAwesome } from '@expo/vector-icons';
+import { FontAwesome, Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Text, TextInput, TouchableOpacity } from 'react-native';
+import { ActivityIndicator, Alert, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { signInWithGithub, signInWithGoogle } from '../lib/oauth';
@@ -10,12 +10,19 @@ import type { RootStackParamList } from '../navigation/RootNavigator';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SignIn'>;
 
+const INPUT_BASE =
+  'min-h-[56px] border-2 px-4 font-inter text-lg text-ink';
+
 export default function SignInScreen({ navigation }: Props) {
   const [mode, setMode] = useState<'signIn' | 'signUp'>('signIn');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const [emailFocused, setEmailFocused] = useState(false);
+  const [passwordFocused, setPasswordFocused] = useState(false);
+  const [confirmFocused, setConfirmFocused] = useState(false);
 
   async function handleSubmit() {
     if (!email || !password) {
@@ -59,8 +66,18 @@ export default function SignInScreen({ navigation }: Props) {
   }
 
   return (
-    <SafeAreaView className="flex-1 justify-center bg-white px-6">
-      <Text className="text-3xl font-bold text-slate-900">
+    <SafeAreaView className="flex-1 justify-center bg-canvas px-6">
+      <TouchableOpacity
+        accessibilityRole="button"
+        accessibilityLabel="Back to landing"
+        activeOpacity={0.7}
+        onPress={() => navigation.goBack()}
+        className="absolute left-4 top-4 h-12 w-12 items-center justify-center rounded-full"
+      >
+        <Ionicons name="arrow-back" size={24} color="#ffffff" />
+      </TouchableOpacity>
+
+      <Text className="font-inter-extrabold text-[26px] uppercase leading-[1.1] tracking-[0.2px] text-ink">
         {mode === 'signIn' ? 'Log In' : 'Create Account'}
       </Text>
 
@@ -70,9 +87,12 @@ export default function SignInScreen({ navigation }: Props) {
         autoComplete="email"
         keyboardType="email-address"
         placeholder="Email"
+        placeholderTextColor="#7a7a7a"
         value={email}
         onChangeText={setEmail}
-        className="mt-8 min-h-[56px] rounded-xl border-2 border-slate-300 px-4 text-lg text-slate-900"
+        onFocus={() => setEmailFocused(true)}
+        onBlur={() => setEmailFocused(false)}
+        className={`mt-8 ${INPUT_BASE} ${emailFocused ? 'border-primary' : 'border-hairline-strong'}`}
       />
 
       <TextInput
@@ -80,10 +100,13 @@ export default function SignInScreen({ navigation }: Props) {
         autoCapitalize="none"
         autoComplete={mode === 'signUp' ? 'new-password' : 'password'}
         placeholder="Password"
+        placeholderTextColor="#7a7a7a"
         secureTextEntry
         value={password}
         onChangeText={setPassword}
-        className="mt-4 min-h-[56px] rounded-xl border-2 border-slate-300 px-4 text-lg text-slate-900"
+        onFocus={() => setPasswordFocused(true)}
+        onBlur={() => setPasswordFocused(false)}
+        className={`mt-4 ${INPUT_BASE} ${passwordFocused ? 'border-primary' : 'border-hairline-strong'}`}
       />
 
       {mode === 'signUp' && (
@@ -92,24 +115,29 @@ export default function SignInScreen({ navigation }: Props) {
           autoCapitalize="none"
           autoComplete="new-password"
           placeholder="Confirm password"
+          placeholderTextColor="#7a7a7a"
           secureTextEntry
           value={confirmPassword}
           onChangeText={setConfirmPassword}
-          className="mt-4 min-h-[56px] rounded-xl border-2 border-slate-300 px-4 text-lg text-slate-900"
+          onFocus={() => setConfirmFocused(true)}
+          onBlur={() => setConfirmFocused(false)}
+          className={`mt-4 ${INPUT_BASE} ${confirmFocused ? 'border-primary' : 'border-hairline-strong'}`}
         />
       )}
 
       <TouchableOpacity
         accessibilityRole="button"
         accessibilityLabel={mode === 'signIn' ? 'Log in' : 'Create account'}
+        accessibilityState={{ disabled: loading }}
+        activeOpacity={0.85}
         onPress={handleSubmit}
         disabled={loading}
-        className="mt-8 min-h-[56px] w-full items-center justify-center rounded-xl bg-emerald-600 px-6"
+        className={`mt-8 h-[56px] w-full items-center justify-center bg-primary px-6 ${loading ? 'opacity-60' : ''}`}
       >
         {loading ? (
-          <ActivityIndicator color="white" />
+          <ActivityIndicator color="#03140d" />
         ) : (
-          <Text className="text-lg font-semibold text-white">
+          <Text className="font-inter-bold text-[13px] uppercase tracking-[1.2px] text-primary-on">
             {mode === 'signIn' ? 'Log In' : 'Create Account'}
           </Text>
         )}
@@ -118,40 +146,54 @@ export default function SignInScreen({ navigation }: Props) {
       <TouchableOpacity
         accessibilityRole="button"
         accessibilityLabel={mode === 'signIn' ? 'Switch to create account' : 'Switch to log in'}
+        accessibilityState={{ disabled: loading }}
+        activeOpacity={0.7}
         onPress={() => {
           setMode(mode === 'signIn' ? 'signUp' : 'signIn');
           setConfirmPassword('');
         }}
         disabled={loading}
-        className="mt-4 min-h-[48px] items-center justify-center px-6"
+        className={`mt-4 min-h-[48px] items-center justify-center px-6 ${loading ? 'opacity-60' : ''}`}
       >
-        <Text className="text-base font-semibold text-emerald-700">
+        <Text className="font-inter text-base text-primary">
           {mode === 'signIn' ? "Don't have an account? Create one" : 'Already have an account? Log in'}
         </Text>
       </TouchableOpacity>
 
-      <Text className="mt-6 text-center text-base text-slate-400">or</Text>
+      <View className="mt-6 flex-row items-center">
+        <View className="h-px flex-1 bg-hairline" />
+        <Text className="mx-4 font-inter text-sm text-muted">or</Text>
+        <View className="h-px flex-1 bg-hairline" />
+      </View>
 
       <TouchableOpacity
         accessibilityRole="button"
         accessibilityLabel="Continue with Google"
+        accessibilityState={{ disabled: loading }}
+        activeOpacity={0.7}
         onPress={() => handleOAuth('google')}
         disabled={loading}
-        className="mt-4 min-h-[56px] w-full flex-row items-center justify-center rounded-xl border-2 border-slate-300 px-6"
+        className={`mt-4 h-[56px] w-full flex-row items-center justify-center border-2 border-hairline-strong px-6 ${loading ? 'opacity-60' : ''}`}
       >
-        <FontAwesome name="google" size={20} color="#334155" />
-        <Text className="ml-3 text-lg font-semibold text-slate-700">Continue with Google</Text>
+        <FontAwesome name="google" size={20} color="#ffffff" />
+        <Text className="ml-3 font-inter-bold text-[13px] uppercase tracking-[1.2px] text-ink">
+          Continue with Google
+        </Text>
       </TouchableOpacity>
 
       <TouchableOpacity
         accessibilityRole="button"
         accessibilityLabel="Continue with GitHub"
+        accessibilityState={{ disabled: loading }}
+        activeOpacity={0.7}
         onPress={() => handleOAuth('github')}
         disabled={loading}
-        className="mt-4 min-h-[56px] w-full flex-row items-center justify-center rounded-xl border-2 border-slate-300 px-6"
+        className={`mt-4 h-[56px] w-full flex-row items-center justify-center border-2 border-hairline-strong px-6 ${loading ? 'opacity-60' : ''}`}
       >
-        <FontAwesome name="github" size={20} color="#334155" />
-        <Text className="ml-3 text-lg font-semibold text-slate-700">Continue with GitHub</Text>
+        <FontAwesome name="github" size={20} color="#ffffff" />
+        <Text className="ml-3 font-inter-bold text-[13px] uppercase tracking-[1.2px] text-ink">
+          Continue with GitHub
+        </Text>
       </TouchableOpacity>
     </SafeAreaView>
   );

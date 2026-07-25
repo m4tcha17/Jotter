@@ -1,4 +1,4 @@
--- DataSnap database schema (Supabase Postgres).
+-- Jotter database schema (Supabase Postgres).
 --
 -- The local SQLite mirror (expo-sqlite, the offline-first source of truth) uses the
 -- same tables and columns with SQLite-appropriate types: uuid -> TEXT, timestamptz ->

@@ -34,7 +34,10 @@ export default function AccountScreen({ navigation }: Props) {
 
   async function handleSignOut() {
     setSigningOut(true);
-    const { error } = await supabase.auth.signOut();
+    // 'local' scope only clears this device's session — no server round-trip to revoke
+    // every other session, so it's fast even on a slow/flaky connection. The default
+    // ('global') scope was likely the cause of a long hang here on poor connectivity.
+    const { error } = await supabase.auth.signOut({ scope: 'local' });
     setSigningOut(false);
 
     if (error) {

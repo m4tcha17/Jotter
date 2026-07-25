@@ -2,9 +2,10 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import CreateProjectScreen from '../screens/CreateProjectScreen';
 import LandingScreen from '../screens/LandingScreen';
-import ProjectHomeScreen from '../screens/ProjectHomeScreen';
+import ProjectSettingsScreen from '../screens/ProjectSettingsScreen';
 import SignInScreen from '../screens/SignInScreen';
 import { MainTabs } from './MainTabs';
+import { ProjectTabs } from './ProjectTabs';
 
 export type RootStackParamList = {
   Landing: undefined;
@@ -12,6 +13,7 @@ export type RootStackParamList = {
   Main: undefined;
   CreateProject: undefined;
   ProjectHome: { projectId: string; projectName: string };
+  ProjectSettings: { projectId: string; projectName: string };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -27,7 +29,8 @@ export function RootNavigator({ initialRouteName }: Props) {
       <Stack.Screen name="SignIn" component={SignInScreen} />
       <Stack.Screen name="Main" component={MainTabs} />
       <Stack.Screen name="CreateProject" component={CreateProjectScreen} />
-      <Stack.Screen name="ProjectHome" component={ProjectHomeScreen} />
+      <Stack.Screen name="ProjectHome" component={ProjectTabs} />
+      <Stack.Screen name="ProjectSettings" component={ProjectSettingsScreen} />
     </Stack.Navigator>
   );
 }

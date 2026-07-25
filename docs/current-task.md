@@ -1,35 +1,58 @@
 # Current Task
 
-**Samples / Single Shot vs Multi Shot — schema and project-creation config done; on-device testing still needed.**
+**Data integrity: required fields + sample-identifier duplicate checking — schema done, UI not built yet.**
 
-Generalizes a personal-use requirement (one physical sample = 6 photos: top, bottom, 4 sides) into a project-configurable feature, rather than hardcoding any particular count/naming:
+Formalizes three behaviors the user's methodology write-up describes, committing them as real planned features rather than leaving them as unstated assumptions:
 
-- **Data model restructure**: replaced the old one-photo-per-row `entries`/`entry_values` tables with `capture_slots` (defines the named photo positions that make up one complete sample for a project — e.g. "Top", "Side 1"), `samples` (the actual unit of data, replacing `entries`), `sample_photos` (one photo per sample × slot), and `sample_values` (replacing `entry_values` — field data shared across a sample's photos, not per-photo). `projects.target_angle_degrees` (project-wide) was removed in favor of a per-slot `capture_slots.target_angle_degrees`, since different slots (e.g. a top-down shot vs. a side shot) can need different tilt targets. Migration: `supabase/migrations/20260715140209_samples_and_capture_slots.sql`, pushed and verified live. `docs/schema.sql` and `docs/architecture.md` (Data Model, Capture flow, Export sections) all updated to match.
-- **`projects.capture_mode`** (`single` | `multi`, default `single`) governs which UI a project gets. Single Shot behaves exactly like the app already did (one photo, then the form) via one auto-created, hidden capture slot — no new complexity for projects that don't need it. Multi Shot exposes a capture-plan builder.
-- **`screens/CreateProjectScreen.tsx`**: new "Photos per sample" section — Single Shot / Multi Shot toggle; Multi Shot reveals a slot builder (name + optional target angle per slot, add/remove).
-- **`lib/projects.ts`**: `createProject` now takes `captureMode`/`captureSlots` and creates the appropriate `capture_slots` rows (one generic "Photo" slot for single-shot, or the researcher-defined list for multi-shot).
+- `fields.is_required` (boolean, default false) — blocks Save Sample in the future Capture flow until a required field has a value.
+- `fields.is_sample_identifier` (boolean, default false, at most one per project via a partial unique index `fields_one_identifier_per_project`) — an opt-in, human-chosen ID field. Checked for duplicates against every other sample's value for it at save time (warning, non-blocking) and again at export time (a duplicate-ID summary alongside the archive, export never blocked).
+- Immediate sync-on-completion — when a sample is confirmed complete, an immediate sync attempt fires right away, in addition to the existing periodic/foreground check (which remains the catch-all for anything created offline).
 
-**Important limitation, documented in `docs/architecture.md`'s Capture flow**: angle-assist (phone tilt via `expo-sensors`) can only verify pitch/roll — it can confirm something like a top-down "Top" shot, but has no way to verify physical position (e.g. "am I on the correct side of the object" for a "Side 2" slot). That's on the researcher to get right physically (e.g. via markings on a rig); not a software gap to try to close.
+Migration: `supabase/migrations/20260725044536_field_required_and_identifier.sql`, pushed and verified live. `docs/schema.sql` and `docs/architecture.md` (Data Model, the new "Data integrity" subsection, Capture flow, Offline & Sync Strategy, Export) all updated.
 
-**Not yet built**: the actual Capture screen that walks through slots, takes photos, and shows the shared form — still blocked on the camera hardware spike + native manual-exposure module (unchanged from before). This task only covers the data model and the project-creation-time configuration of capture mode/slots.
+**Not yet built**: the actual UI for any of this — marking a field as required/identifier (Fields tab or Add Field modal), the save-time blocking/warning behavior, and the export-time duplicate summary all depend on the Capture and Data/Export screens existing first, which they don't yet (see build order below). This task only covers the schema and the committed design.
+
+---
+
+**App renamed DataSnap → Jotter — code/docs done, one external step still needed (see below).**
+
+`app.json` (name/slug/scheme/package: `com.m4tcha.jotter`, deep-link scheme `jotter://`), `package.json`, all docs (`AGENTS.md`, `docs/architecture.md`, `docs/design-blueprint.md`, `docs/schema.sql`, `README.md`), the historical migration's header comment, and the Landing screen's heading text are all updated. Native project regenerated (`expo prebuild --clean`) and verified: `AndroidManifest.xml`/`build.gradle` show `com.m4tcha.jotter` and the `jotter://` scheme.
+
+**Still needed from the user (external, not something I can do):**
+- Create a new Google Cloud **Android** OAuth Client for package `com.m4tcha.jotter` (same debug SHA-1 as before) — the old Android client was tied to the retired `com.m4tcha.datasnap` package and won't match anymore. The **Web** Client ID/Secret used in Supabase's Google provider does not need to change.
+- Add `jotter://**` to Supabase → Authentication → URL Configuration's allowed Redirect URLs (for the GitHub OAuth flow); the old `datasnap://**` entry can be removed once confirmed working.
+- Next `expo run:android` will install as a **new** app (different package name) alongside any old DataSnap install still on the test device/emulator — fine to just ignore/uninstall the old one.
+
+**Project inner-level tabs + real Fields tab — done; on-device testing still needed.**
+
+Builds out the "inside a project" navigation level described in `docs/architecture.md`, replacing the old `ProjectHomeScreen` placeholder:
+
+- **`navigation/ProjectTabs.tsx`**: the real inner tab bar — Capture / Fields / Data — shown once a project is opened, with a thin header above it (back-to-Projects arrow, project name, settings gear). Wired into `RootNavigator` as what the `ProjectHome` route now renders (route name unchanged, so `CreateProjectScreen`/`ProjectsScreen`'s existing `navigate('ProjectHome', ...)` calls needed no changes).
+- **`screens/FieldsScreen.tsx`** — a real Excel-style sheet: spreadsheet column letters (A, B, C...) above the field headers, a frozen row-number column on the left that stays put while the sheet scrolls horizontally, and a fixed set of empty preview rows below the headers (real sample rows will replace these once Capture exists). Locked/read-only by default — an "Edit" button in the top-right toggles edit mode, which is the only state that exposes the per-field delete "×" and the "+ Add Field" column, preventing accidental changes to the schema.
+- **`screens/CaptureScreen.tsx`** / **`screens/DataScreen.tsx`** — template/placeholder pages for now, explaining what's coming and why (blocked on the camera hardware spike + native module for Capture; Data depends on Capture existing).
+- **`screens/ProjectSettingsScreen.tsx`** (new) — the Delete Project button + confirmation, moved here from the old `ProjectHomeScreen` now that the settings gear is its home instead of a placeholder screen.
+- **`lib/projects.ts`**: added `fetchFields`, `addField`, `deleteField`; extracted the field+category insert logic (previously inline in `createProject`'s loop) into a shared `insertFieldWithCategory` helper so both project creation and the Fields tab's "+ Add Field" use the same code path. Also extracted `DATA_TYPE_LABELS` as a shared exported constant (previously duplicated locally in `CreateProjectScreen`).
 
 **Not yet done / acceptance criteria before calling this finished:**
-- On-device testing: create a Multi Shot project with several named slots (including one with a target angle) and confirm they save correctly; create a Single Shot project and confirm no slot-builder UI appears and it still works exactly as before.
+- On-device testing: open a project, confirm the tab bar (Capture/Fields/Data) and header (back arrow, name, settings gear) render correctly; confirm Fields opens locked (no delete/add controls visible), tapping Edit reveals them, adding a field of each data type (including category, both new and existing) shows up as a new lettered column, deleting a field works with confirmation, and the frozen row-number column stays in place while scrolling horizontally through many fields.
 
 **Known gaps, not blocking (carried over from previous tasks):**
-- Writes still go straight to Supabase, bypassing the offline-first SQLite layer — same deliberate, temporary deviation as before, now also applying to `samples`/`capture_slots`/etc.
+- Writes still go straight to Supabase, bypassing the offline-first SQLite layer.
 - Guest-to-OAuth/email identity linking is still not implemented.
-- Dependent category fields, camera calibration — still deferred (see below).
+- Dependent category fields, camera calibration, camera hardware spike — still deferred.
+- Fields tab has no rename/edit-in-place for an existing field yet (only add/delete) — not requested, flagging as a likely future addition rather than an oversight.
 
 ## Suggested build order (after this task)
-1. ~~Navigation shell~~ / ~~Empty-state → project creation~~ / ~~Samples & capture modes~~ — done above.
+1. ~~Navigation shell~~ / ~~Empty-state → project creation~~ / ~~Samples & capture modes~~ / ~~Project tabs + real Fields tab~~ / ~~Data-integrity schema~~ — done above.
 2. Local SQLite schema + typed data-access layer (`projects`, `categories`, `category_options`, `fields`, `capture_slots`, `samples`, `sample_photos`, `sample_values`) — **now overdue**, since `lib/projects.ts` currently writes straight to Supabase and needs refactoring once this lands.
 3. Camera hardware capability spike — verify Camera2 `INFO_SUPPORTED_HARDWARE_LEVEL` on the actual field device(s) before investing in the native manual-exposure module; `LEGACY`-level devices can't do manual exposure at all.
 4. Guest → registered upgrade flow via Supabase identity linking (not yet built — current Log In/Sign Up/OAuth are separate accounts, not an upgrade path).
 5. Dependent category fields — let a category field derive its value from a `number` field via threshold/range rules (`field_category_rules`), auto-filled but overridable in Capture.
-6. Real inner-level tabs for an open project — Capture (per-slot angle-assist where applicable → native manual-exposure camera capture, walking through all of a project's `capture_slots` → shared logging form once the sample is complete), Fields (persistent schema editor, not just at creation), Data (table view + CSV/zip export, one row per sample with one photo column per slot) — replacing the `ProjectHomeScreen` placeholder.
+5b. Fields tab / Add Field modal — add UI to mark a field `is_required` and to designate a project's (at most one) `is_sample_identifier` field, now that the columns exist.
+6. Real Capture tab — per-slot angle-assist where applicable → native manual-exposure camera capture, walking through all of a project's `capture_slots` → shared logging form once the sample is complete, enforcing `is_required` (block save) and `is_sample_identifier` (warn on duplicate) → immediate sync attempt on completion. Replaces the current `CaptureScreen` placeholder.
 7. Camera calibration screen — locked ISO/shutter/white-balance/resolution, whenever Capture is first opened for a project.
-8. Supabase sync — push/pull unsynced rows, photo upload to Storage (this is where the offline-first SQLite layer and the direct-to-Supabase code converge).
-9. Project sharing — invite collaborator by email, `project_members` UI/flow. (RLS policies already exist in `docs/schema.sql`.)
+8. Real Data tab — table view (one row per sample, one photo column per slot) + CSV/zip export, including the export-time duplicate-identifier summary. Replaces the current `DataScreen` placeholder.
+9. Supabase sync — push/pull unsynced rows, photo upload to Storage, the periodic/foreground sweep that backstops the immediate sync-on-completion trigger (this is where the offline-first SQLite layer and the direct-to-Supabase code converge).
+10. Project sharing — invite collaborator by email, `project_members` UI/flow. (RLS policies already exist in `docs/schema.sql`.)
 
 When the user assigns the next concrete task, replace this file's content with that task's specific scope and acceptance criteria.

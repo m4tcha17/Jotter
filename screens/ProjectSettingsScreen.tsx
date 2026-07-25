@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useState } from 'react';
 import { ActivityIndicator, Alert, Text, TouchableOpacity } from 'react-native';
@@ -6,9 +7,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { deleteProject } from '../lib/projects';
 import type { RootStackParamList } from '../navigation/RootNavigator';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'ProjectHome'>;
+type Props = NativeStackScreenProps<RootStackParamList, 'ProjectSettings'>;
 
-export default function ProjectHomeScreen({ route, navigation }: Props) {
+export default function ProjectSettingsScreen({ route, navigation }: Props) {
   const { projectId, projectName } = route.params;
   const [deleting, setDeleting] = useState(false);
 
@@ -37,27 +38,25 @@ export default function ProjectHomeScreen({ route, navigation }: Props) {
   }
 
   return (
-    <SafeAreaView className="flex-1 items-center justify-center bg-white px-6">
-      <Text className="text-2xl font-bold text-slate-900">{projectName}</Text>
-      <Text className="mt-2 text-center text-base text-slate-500">
-        Capture, Fields, and Data tabs for this project are coming soon.
-      </Text>
-
+    <SafeAreaView className="flex-1 bg-white px-6 pt-6">
       <TouchableOpacity
         accessibilityRole="button"
-        accessibilityLabel="Back to projects"
-        onPress={() => navigation.navigate('Main')}
-        className="mt-8 min-h-[48px] items-center justify-center rounded-xl border-2 border-slate-300 px-6"
+        accessibilityLabel="Back"
+        onPress={() => navigation.goBack()}
+        className="min-h-[44px] w-11 items-center justify-center"
       >
-        <Text className="text-base font-semibold text-slate-700">Back to Projects</Text>
+        <Ionicons name="arrow-back" size={24} color="#334155" />
       </TouchableOpacity>
+
+      <Text className="mt-2 text-3xl font-bold text-slate-900">{projectName}</Text>
+      <Text className="mt-1 text-base text-slate-500">Project settings</Text>
 
       <TouchableOpacity
         accessibilityRole="button"
         accessibilityLabel="Delete project"
         onPress={handleDelete}
         disabled={deleting}
-        className="mt-4 min-h-[48px] items-center justify-center rounded-xl border-2 border-red-300 px-6"
+        className="mt-8 min-h-[48px] items-center justify-center rounded-xl border-2 border-red-300 px-6"
       >
         {deleting ? (
           <ActivityIndicator color="#DC2626" />

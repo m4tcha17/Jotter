@@ -1,12 +1,12 @@
 {
   "expo": {
-    "name": "DataSnap",
-    "slug": "datasnap",
-    "scheme": "datasnap",
+    "name": "Jotter",
+    "slug": "jotter",
+    "scheme": "jotter",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "dark",
     "ios": {
       "supportsTablet": true
     },
@@ -21,7 +21,7 @@
       "permissions": [
         "android.permission.CAMERA"
       ],
-      "package": "com.m4tcha.datasnap"
+      "package": "com.m4tcha.jotter"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -32,7 +32,7 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "DataSnap needs camera access to capture photos for your data entries.",
+          "cameraPermission": "Jotter needs camera access to capture photos for your data entries.",
           "recordAudioAndroid": false
         }
       ],

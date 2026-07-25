@@ -40,6 +40,16 @@ export type ProjectField = {
   category: { name: string } | null;
 };
 
+export const DATA_TYPE_LABELS: Record<FieldDataType, string> = {
+  text: 'Text',
+  number: 'Number',
+  date: 'Date',
+  boolean: 'Yes / No',
+  category: 'Category',
+  photo: 'Photo',
+  timestamp: 'Timestamp (auto)',
+};
+
 export async function fetchProjects(): Promise<Project[]> {
   const { data, error } = await supabase
     .from('projects')

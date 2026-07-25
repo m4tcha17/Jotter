@@ -1,4 +1,4 @@
--- DataSnap database schema (Supabase Postgres).
+-- Jotter database schema (Supabase Postgres).
 --
 -- The local SQLite mirror (expo-sqlite, the offline-first source of truth) uses the
 -- same tables and columns with SQLite-appropriate types: uuid -> TEXT, timestamptz ->
@@ -71,12 +71,16 @@ create table fields (
   ),
   category_id uuid references categories(id) on delete restrict,
   source_field_id uuid references fields(id) on delete set null,
+  is_required boolean not null default false,
+  is_sample_identifier boolean not null default false,
   sort_order integer not null,
   created_at timestamptz not null default now(),
   synced_at timestamptz,
   unique (project_id, name)
 );
 create index fields_project_id_idx on fields(project_id);
+-- At most one field per project may be the sample identifier (a project doesn't need one).
+create unique index fields_one_identifier_per_project on fields(project_id) where is_sample_identifier;
 
 create table field_category_rules (
   id uuid primary key default gen_random_uuid(),

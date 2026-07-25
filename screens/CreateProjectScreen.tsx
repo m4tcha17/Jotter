@@ -5,7 +5,7 @@ import { ActivityIndicator, Alert, ScrollView, Text, TextInput, TouchableOpacity
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import AddFieldModal from '../components/AddFieldModal';
-import { createProject, fetchGlobalCategories } from '../lib/projects';
+import { createProject, DATA_TYPE_LABELS, fetchGlobalCategories } from '../lib/projects';
 import type { CaptureMode, CaptureSlotInput, ExistingCategory, NewFieldInput } from '../lib/projects';
 import type { RootStackParamList } from '../navigation/RootNavigator';
 
@@ -21,16 +21,6 @@ const PRESET_COLORS = [
   '#14B8A6', // teal
   '#64748B', // slate
 ];
-
-const DATA_TYPE_LABELS: Record<NewFieldInput['dataType'], string> = {
-  text: 'Text',
-  number: 'Number',
-  date: 'Date',
-  boolean: 'Yes / No',
-  category: 'Category',
-  photo: 'Photo',
-  timestamp: 'Timestamp (auto)',
-};
 
 export default function CreateProjectScreen({ navigation }: Props) {
   const [name, setName] = useState('');
