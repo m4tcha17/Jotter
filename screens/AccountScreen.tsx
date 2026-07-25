@@ -15,13 +15,9 @@ type Props = CompositeScreenProps<
   NativeStackScreenProps<RootStackParamList>
 >;
 
-function InfoRow({ label, value }: { label: string; value: string }) {
-  return (
-    <View className="mt-3 w-full flex-row justify-between border-b border-slate-100 pb-3">
-      <Text className="text-base text-slate-500">{label}</Text>
-      <Text className="text-base font-semibold text-slate-900">{value}</Text>
-    </View>
-  );
+function formatProvider(provider: string) {
+  if (provider === 'github') return 'GitHub';
+  return provider.charAt(0).toUpperCase() + provider.slice(1);
 }
 
 export default function AccountScreen({ navigation }: Props) {
@@ -29,19 +25,27 @@ export default function AccountScreen({ navigation }: Props) {
   const [signingOut, setSigningOut] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setUser(data.user));
+    // getSession() reads the cached local session — offline-first, unlike
+    // getUser(), which always round-trips to the Auth server.
+    supabase.auth.getSession().then(({ data }) => setUser(data.session?.user ?? null));
   }, []);
 
   async function handleSignOut() {
     setSigningOut(true);
-    // 'local' scope only clears this device's session — no server round-trip to revoke
-    // every other session, so it's fast even on a slow/flaky connection. The default
-    // ('global') scope was likely the cause of a long hang here on poor connectivity.
-    const { error } = await supabase.auth.signOut({ scope: 'local' });
+    // supabase-js's signOut() always POSTs /logout, even at scope: 'local' — scope only
+    // changes what the server revokes, it doesn't skip the request. That request has no
+    // built-in timeout, so on poor/no connectivity it can hang indefinitely. Race it
+    // against a short timeout and proceed locally either way: matches this app's
+    // offline-first stance that server sync is best-effort, never a hard dependency for
+    // a core flow like signing out.
+    const result = await Promise.race([
+      supabase.auth.signOut({ scope: 'local' }),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 4000)),
+    ]);
     setSigningOut(false);
 
-    if (error) {
-      Alert.alert('Could not sign out', error.message);
+    if (result?.error) {
+      Alert.alert('Could not sign out', result.error.message);
       return;
     }
 
@@ -52,36 +56,60 @@ export default function AccountScreen({ navigation }: Props) {
 
   if (!user) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-white">
-        <ActivityIndicator size="large" />
+      <SafeAreaView className="flex-1 items-center justify-center bg-canvas">
+        <ActivityIndicator size="large" color="#10b981" />
       </SafeAreaView>
     );
   }
 
-  const provider = user.app_metadata?.provider ?? 'unknown';
+  const rows: { label: string; value: string; mono?: boolean }[] = [
+    { label: 'Account type', value: user.is_anonymous ? 'Guest' : 'Registered' },
+    { label: 'Sign-in method', value: formatProvider(user.app_metadata?.provider ?? 'unknown') },
+    { label: 'Email', value: user.email ?? 'None' },
+    { label: 'User ID', value: user.id, mono: true },
+  ];
 
   return (
-    <SafeAreaView className="flex-1 bg-white px-6 pt-8">
-      <Text className="text-2xl font-bold text-slate-900">Account</Text>
+    <SafeAreaView className="flex-1 bg-canvas px-6 pt-8">
+      <Text className="font-inter-extrabold text-[26px] uppercase leading-[1.1] tracking-[0.2px] text-ink">
+        Account
+      </Text>
 
-      <View className="mt-6 w-full rounded-xl border-2 border-slate-100 p-4">
-        <InfoRow label="Account type" value={user.is_anonymous ? 'Guest' : 'Registered'} />
-        <InfoRow label="Sign-in method" value={provider} />
-        <InfoRow label="Email" value={user.email ?? 'None'} />
-        <InfoRow label="User ID" value={user.id} />
+      <View className="mt-6 w-full bg-surface-card px-4">
+        {rows.map((row, index) => (
+          <View
+            key={row.label}
+            className={`flex-row items-center justify-between py-3 ${
+              index < rows.length - 1 ? 'border-b border-hairline' : ''
+            }`}
+          >
+            <Text className="font-inter text-base text-body">{row.label}</Text>
+            <Text
+              className="ml-4 flex-shrink text-right font-inter text-base text-body-strong"
+              numberOfLines={1}
+              ellipsizeMode={row.mono ? 'middle' : 'tail'}
+            >
+              {row.value}
+            </Text>
+          </View>
+        ))}
       </View>
 
       <TouchableOpacity
         accessibilityRole="button"
         accessibilityLabel="Sign out"
+        accessibilityState={{ disabled: signingOut }}
+        activeOpacity={0.7}
         onPress={handleSignOut}
         disabled={signingOut}
-        className="mt-8 min-h-[48px] items-center justify-center rounded-xl border-2 border-slate-300 px-6"
+        className={`mt-8 h-[56px] w-full items-center justify-center border-2 border-hairline-strong px-6 ${
+          signingOut ? 'opacity-60' : ''
+        }`}
       >
         {signingOut ? (
-          <ActivityIndicator color="#334155" />
+          <ActivityIndicator color="#ffffff" />
         ) : (
-          <Text className="text-base font-semibold text-slate-700">Sign Out</Text>
+          <Text className="font-inter-bold text-[13px] uppercase tracking-[1.2px] text-ink">Sign Out</Text>
         )}
       </TouchableOpacity>
     </SafeAreaView>

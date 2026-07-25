@@ -195,3 +195,12 @@ export async function deleteField(fieldId: string): Promise<void> {
   const { error } = await supabase.from('fields').delete().eq('id', fieldId);
   if (error) throw error;
 }
+
+export async function fetchSampleCount(projectId: string): Promise<number> {
+  const { count, error } = await supabase
+    .from('samples')
+    .select('id', { count: 'exact', head: true })
+    .eq('project_id', projectId);
+  if (error) throw error;
+  return count ?? 0;
+}

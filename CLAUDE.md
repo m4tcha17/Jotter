@@ -13,6 +13,7 @@ Expo, React Native, Supabase, TypeScript
 - Don't over-engineer. Match existing code style
 - Don't add comments unless logic is genuinely non-obvious
 - Ask before touching files outside the current task scope
+- Never touch sensitive files (e.g. .env, .env.*, credentials, keys) — do not read, edit, print, or move them
 
 ## Current task
 
