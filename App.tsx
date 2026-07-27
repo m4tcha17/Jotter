@@ -15,7 +15,7 @@ import { ActivityIndicator, Linking, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { createSessionFromUrl } from './lib/oauth';
-import { supabase } from './lib/supabase';
+import { flushPendingRevocations, supabase } from './lib/supabase';
 import { RootNavigator } from './navigation/RootNavigator';
 
 export default function App() {
@@ -34,6 +34,8 @@ export default function App() {
       setHasSession(!!data.session);
       setLoading(false);
     });
+
+    flushPendingRevocations().catch(() => {});
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       setHasSession(!!session);
