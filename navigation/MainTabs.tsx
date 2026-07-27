@@ -1,8 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 
-import AccountScreen from '../screens/AccountScreen';
-import ProjectsScreen from '../screens/ProjectsScreen';
+import AccountScreen from '../screens/account/AccountScreen';
+import ProjectsScreen from '../screens/projects/ProjectsScreen';
 
 export type MainTabParamList = {
   Projects: undefined;

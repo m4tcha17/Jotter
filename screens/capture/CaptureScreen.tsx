@@ -2,7 +2,7 @@ import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import type { ProjectTabParamList } from '../navigation/ProjectTabs';
+import type { ProjectTabParamList } from '../../navigation/ProjectTabs';
 
 type Props = BottomTabScreenProps<ProjectTabParamList, 'Capture'>;
 

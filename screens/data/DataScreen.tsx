@@ -4,9 +4,9 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { DATA_TYPE_LABELS, fetchFields, fetchSampleCount } from '../lib/projects';
-import type { ProjectField } from '../lib/projects';
-import type { ProjectTabParamList } from '../navigation/ProjectTabs';
+import { DATA_TYPE_LABELS, fetchFields, fetchSampleCount } from '../../lib/projects';
+import type { ProjectField } from '../../lib/projects';
+import type { ProjectTabParamList } from '../../navigation/ProjectTabs';
 
 type Props = BottomTabScreenProps<ProjectTabParamList, 'Data'>;
 

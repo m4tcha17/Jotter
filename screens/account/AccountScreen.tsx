@@ -6,9 +6,9 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { signOutLocally, supabase } from '../lib/supabase';
-import type { MainTabParamList } from '../navigation/MainTabs';
-import type { RootStackParamList } from '../navigation/RootNavigator';
+import { signOutLocally, supabase } from '../../lib/supabase';
+import type { MainTabParamList } from '../../navigation/MainTabs';
+import type { RootStackParamList } from '../../navigation/RootNavigator';
 
 type Props = CompositeScreenProps<
   BottomTabScreenProps<MainTabParamList, 'Account'>,

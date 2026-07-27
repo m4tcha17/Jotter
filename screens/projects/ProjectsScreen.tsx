@@ -5,10 +5,10 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, FlatList, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { fetchProjects } from '../lib/projects';
-import type { Project } from '../lib/projects';
-import type { MainTabParamList } from '../navigation/MainTabs';
-import type { RootStackParamList } from '../navigation/RootNavigator';
+import { fetchProjects } from '../../lib/projects';
+import type { Project } from '../../lib/projects';
+import type { MainTabParamList } from '../../navigation/MainTabs';
+import type { RootStackParamList } from '../../navigation/RootNavigator';
 
 type Props = CompositeScreenProps<
   BottomTabScreenProps<MainTabParamList, 'Projects'>,

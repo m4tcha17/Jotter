@@ -3,8 +3,8 @@ import { useState } from 'react';
 import { ActivityIndicator, Alert, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { supabase } from '../lib/supabase';
-import type { RootStackParamList } from '../navigation/RootNavigator';
+import { supabase } from '../../lib/supabase';
+import type { RootStackParamList } from '../../navigation/RootNavigator';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Landing'>;
 
