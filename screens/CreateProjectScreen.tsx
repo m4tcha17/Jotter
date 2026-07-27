@@ -22,8 +22,11 @@ const PRESET_COLORS = [
   '#64748B', // slate
 ];
 
+const INPUT_BASE = 'border-2 px-4 font-inter text-lg text-ink';
+
 export default function CreateProjectScreen({ navigation }: Props) {
   const [name, setName] = useState('');
+  const [nameFocused, setNameFocused] = useState(false);
   const [color, setColor] = useState(PRESET_COLORS[0]);
   const [fields, setFields] = useState<NewFieldInput[]>([]);
   const [existingCategories, setExistingCategories] = useState<ExistingCategory[]>([]);
@@ -33,7 +36,9 @@ export default function CreateProjectScreen({ navigation }: Props) {
   const [captureMode, setCaptureMode] = useState<CaptureMode>('single');
   const [captureSlots, setCaptureSlots] = useState<CaptureSlotInput[]>([]);
   const [slotLabelDraft, setSlotLabelDraft] = useState('');
+  const [slotLabelFocused, setSlotLabelFocused] = useState(false);
   const [slotAngleDraft, setSlotAngleDraft] = useState('');
+  const [slotAngleFocused, setSlotAngleFocused] = useState(false);
 
   useEffect(() => {
     fetchGlobalCategories()
@@ -81,170 +86,225 @@ export default function CreateProjectScreen({ navigation }: Props) {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView className="flex-1 bg-canvas">
       <ScrollView className="flex-1 px-6 pt-6" keyboardShouldPersistTaps="handled">
         <TouchableOpacity
           accessibilityRole="button"
           accessibilityLabel="Back"
+          activeOpacity={0.7}
           onPress={() => navigation.goBack()}
-          className="min-h-[44px] w-11 items-center justify-center"
+          className="h-12 w-12 items-center justify-center rounded-full"
         >
-          <Ionicons name="arrow-back" size={24} color="#334155" />
+          <Ionicons name="arrow-back" size={24} color="#ffffff" />
         </TouchableOpacity>
 
-        <Text className="mt-2 text-3xl font-bold text-slate-900">New Project</Text>
+        <Text className="mt-2 font-inter-black text-[32px] uppercase leading-[1.05] tracking-[0.2px] text-ink">
+          New Project
+        </Text>
 
-        <Text className="mt-6 text-base font-semibold text-slate-700">Project name</Text>
+        <Text className="mt-6 font-inter-bold text-base text-body-strong">Project name</Text>
         <TextInput
           accessibilityLabel="Project name"
           placeholder="e.g. Copra Moisture Survey"
+          placeholderTextColor="#7a7a7a"
           value={name}
           onChangeText={setName}
-          className="mt-2 min-h-[56px] rounded-xl border-2 border-slate-300 px-4 text-lg text-slate-900"
+          onFocus={() => setNameFocused(true)}
+          onBlur={() => setNameFocused(false)}
+          className={`mt-2 h-[56px] ${INPUT_BASE} ${nameFocused ? 'border-primary' : 'border-hairline-strong'}`}
         />
 
-        <Text className="mt-6 text-base font-semibold text-slate-700">Color</Text>
+        <Text className="mt-6 font-inter-bold text-base text-body-strong">Color</Text>
         <View className="mt-2 flex-row flex-wrap gap-3">
           {PRESET_COLORS.map((preset) => (
             <TouchableOpacity
               key={preset}
               accessibilityRole="button"
               accessibilityLabel={`Color ${preset}`}
+              activeOpacity={0.7}
               onPress={() => setColor(preset)}
               style={{ backgroundColor: preset }}
-              className={`h-12 w-12 rounded-full ${color === preset ? 'border-4 border-slate-900' : ''}`}
+              className={`h-12 w-12 rounded-full ${color === preset ? 'border-[3px] border-ink' : 'border-2 border-hairline'}`}
             />
           ))}
         </View>
 
-        <Text className="mt-6 text-base font-semibold text-slate-700">Photos per sample</Text>
+        <Text className="mt-6 font-inter-bold text-base text-body-strong">Photos per sample</Text>
         <View className="mt-2 flex-row gap-2">
           <TouchableOpacity
             accessibilityRole="button"
             accessibilityLabel="Single Shot — one photo per sample"
+            activeOpacity={0.7}
             onPress={() => setCaptureMode('single')}
-            className={`min-h-[48px] flex-1 items-center justify-center rounded-xl border-2 ${
-              captureMode === 'single' ? 'border-emerald-600 bg-emerald-50' : 'border-slate-300'
+            className={`h-12 flex-1 items-center justify-center border-2 ${
+              captureMode === 'single' ? 'border-primary bg-surface-elevated' : 'border-hairline-strong'
             }`}
           >
-            <Text className="text-base font-semibold text-slate-700">Single Shot</Text>
+            <Text
+              className={`font-inter-bold text-[13px] uppercase tracking-[1.2px] ${
+                captureMode === 'single' ? 'text-primary' : 'text-body'
+              }`}
+            >
+              Single Shot
+            </Text>
           </TouchableOpacity>
           <TouchableOpacity
             accessibilityRole="button"
             accessibilityLabel="Multi Shot — several photos per sample"
+            activeOpacity={0.7}
             onPress={() => setCaptureMode('multi')}
-            className={`min-h-[48px] flex-1 items-center justify-center rounded-xl border-2 ${
-              captureMode === 'multi' ? 'border-emerald-600 bg-emerald-50' : 'border-slate-300'
+            className={`h-12 flex-1 items-center justify-center border-2 ${
+              captureMode === 'multi' ? 'border-primary bg-surface-elevated' : 'border-hairline-strong'
             }`}
           >
-            <Text className="text-base font-semibold text-slate-700">Multi Shot</Text>
+            <Text
+              className={`font-inter-bold text-[13px] uppercase tracking-[1.2px] ${
+                captureMode === 'multi' ? 'text-primary' : 'text-body'
+              }`}
+            >
+              Multi Shot
+            </Text>
           </TouchableOpacity>
         </View>
 
         {captureMode === 'single' ? (
-          <Text className="mt-2 text-base text-slate-500">One photo per sample, then the data form.</Text>
+          <Text className="mt-2 font-inter-light text-base text-body">One photo per sample, then the data form.</Text>
         ) : (
           <View className="mt-3">
-            <Text className="text-base text-slate-500">
+            <Text className="font-inter-light text-base text-body">
               Define each photo position for one complete sample (e.g. Top, Bottom, Side 1-4).
             </Text>
 
-            {captureSlots.map((slot, index) => (
-              <View
-                key={`${slot.label}-${index}`}
-                className="mt-3 flex-row items-center justify-between rounded-xl border-2 border-slate-100 px-4 py-3"
-              >
-                <View>
-                  <Text className="text-base font-semibold text-slate-900">{slot.label}</Text>
-                  {slot.targetAngleDegrees !== undefined && (
-                    <Text className="text-sm text-slate-500">Target angle: {slot.targetAngleDegrees}°</Text>
-                  )}
-                </View>
-                <TouchableOpacity
-                  accessibilityRole="button"
-                  accessibilityLabel={`Remove slot ${slot.label}`}
-                  onPress={() => setCaptureSlots(captureSlots.filter((_, i) => i !== index))}
-                >
-                  <Text className="text-base font-semibold text-red-600">Remove</Text>
-                </TouchableOpacity>
+            {captureSlots.length > 0 && (
+              <View className="mt-3 bg-surface-card px-4">
+                {captureSlots.map((slot, index) => (
+                  <View
+                    key={`${slot.label}-${index}`}
+                    className={`flex-row items-center justify-between py-3 ${
+                      index < captureSlots.length - 1 ? 'border-b border-hairline' : ''
+                    }`}
+                  >
+                    <View>
+                      <Text className="font-inter-bold text-base text-body-strong">{slot.label}</Text>
+                      {slot.targetAngleDegrees !== undefined && (
+                        <Text className="mt-1 font-inter text-sm text-muted">
+                          Target angle: {slot.targetAngleDegrees}°
+                        </Text>
+                      )}
+                    </View>
+                    <TouchableOpacity
+                      accessibilityRole="button"
+                      accessibilityLabel={`Remove slot ${slot.label}`}
+                      activeOpacity={0.7}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      onPress={() => setCaptureSlots(captureSlots.filter((_, i) => i !== index))}
+                      className="h-11 w-11 items-center justify-center"
+                    >
+                      <Ionicons name="trash-outline" size={20} color="#ef4444" />
+                    </TouchableOpacity>
+                  </View>
+                ))}
               </View>
-            ))}
+            )}
 
             <View className="mt-3 flex-row gap-2">
               <TextInput
                 accessibilityLabel="Photo position name"
                 placeholder="e.g. Top"
+                placeholderTextColor="#7a7a7a"
                 value={slotLabelDraft}
                 onChangeText={setSlotLabelDraft}
-                className="min-h-[48px] flex-1 rounded-xl border-2 border-slate-300 px-4 text-base text-slate-900"
+                onFocus={() => setSlotLabelFocused(true)}
+                onBlur={() => setSlotLabelFocused(false)}
+                className={`h-12 flex-1 ${INPUT_BASE} text-base ${slotLabelFocused ? 'border-primary' : 'border-hairline-strong'}`}
               />
               <TextInput
                 accessibilityLabel="Target angle in degrees, optional"
                 placeholder="Angle °"
+                placeholderTextColor="#7a7a7a"
                 keyboardType="numeric"
                 value={slotAngleDraft}
                 onChangeText={setSlotAngleDraft}
-                className="min-h-[48px] w-24 rounded-xl border-2 border-slate-300 px-3 text-base text-slate-900"
+                onFocus={() => setSlotAngleFocused(true)}
+                onBlur={() => setSlotAngleFocused(false)}
+                className={`h-12 w-24 ${INPUT_BASE} text-base ${slotAngleFocused ? 'border-primary' : 'border-hairline-strong'}`}
               />
               <TouchableOpacity
                 accessibilityRole="button"
                 accessibilityLabel="Add photo position"
+                activeOpacity={0.7}
                 onPress={handleAddSlot}
-                className="min-h-[48px] items-center justify-center rounded-xl border-2 border-slate-300 px-4"
+                className="h-12 items-center justify-center border-2 border-hairline-strong px-4"
               >
-                <Text className="text-base font-semibold text-slate-700">Add</Text>
+                <Text className="font-inter-bold text-[13px] uppercase tracking-[1.2px] text-ink">Add</Text>
               </TouchableOpacity>
             </View>
           </View>
         )}
 
         <View className="mt-8 flex-row items-center justify-between">
-          <Text className="text-base font-semibold text-slate-700">Fields</Text>
+          <Text className="font-inter-bold text-base text-body-strong">Fields</Text>
           <TouchableOpacity
             accessibilityRole="button"
             accessibilityLabel="Add field"
+            activeOpacity={0.7}
             onPress={() => setModalVisible(true)}
-            className="min-h-[44px] items-center justify-center rounded-xl bg-emerald-600 px-4"
+            className="h-11 items-center justify-center border-2 border-hairline-strong px-4"
           >
-            <Text className="text-base font-semibold text-white">+ Add Field</Text>
+            <Text className="font-inter-bold text-[13px] uppercase tracking-[1.2px] text-ink">+ Add Field</Text>
           </TouchableOpacity>
         </View>
 
         {fields.length === 0 ? (
-          <Text className="mt-3 text-base text-slate-500">
+          <Text className="mt-3 font-inter-light text-base text-body">
             No fields yet. You can add fields now, or come back and add more later.
           </Text>
         ) : (
-          fields.map((field, index) => (
-            <View
-              key={`${field.name}-${index}`}
-              className="mt-3 flex-row items-center justify-between rounded-xl border-2 border-slate-100 px-4 py-3"
-            >
-              <View>
-                <Text className="text-base font-semibold text-slate-900">{field.name}</Text>
-                <Text className="text-sm text-slate-500">{DATA_TYPE_LABELS[field.dataType]}</Text>
-              </View>
-              <TouchableOpacity
-                accessibilityRole="button"
-                accessibilityLabel={`Remove field ${field.name}`}
-                onPress={() => setFields(fields.filter((_, i) => i !== index))}
+          <View className="mt-3 bg-surface-card px-4">
+            {fields.map((field, index) => (
+              <View
+                key={`${field.name}-${index}`}
+                className={`flex-row items-center justify-between py-3 ${
+                  index < fields.length - 1 ? 'border-b border-hairline' : ''
+                }`}
               >
-                <Text className="text-base font-semibold text-red-600">Remove</Text>
-              </TouchableOpacity>
-            </View>
-          ))
+                <View>
+                  <Text className="font-inter-bold text-base text-body-strong">{field.name}</Text>
+                  <Text className="mt-1 font-inter text-sm text-muted">{DATA_TYPE_LABELS[field.dataType]}</Text>
+                </View>
+                <TouchableOpacity
+                  accessibilityRole="button"
+                  accessibilityLabel={`Remove field ${field.name}`}
+                  activeOpacity={0.7}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  onPress={() => setFields(fields.filter((_, i) => i !== index))}
+                  className="h-11 w-11 items-center justify-center"
+                >
+                  <Ionicons name="trash-outline" size={20} color="#ef4444" />
+                </TouchableOpacity>
+              </View>
+            ))}
+          </View>
         )}
       </ScrollView>
 
-      <View className="border-t border-slate-100 px-6 py-4">
+      <View className="border-t border-hairline px-6 py-4">
         <TouchableOpacity
           accessibilityRole="button"
           accessibilityLabel="Create project"
+          accessibilityState={{ disabled: saving }}
+          activeOpacity={0.85}
           onPress={handleCreate}
           disabled={saving}
-          className="min-h-[56px] w-full items-center justify-center rounded-xl bg-emerald-600 px-6"
+          className={`h-[56px] w-full items-center justify-center bg-primary px-6 ${saving ? 'opacity-60' : ''}`}
         >
-          {saving ? <ActivityIndicator color="white" /> : <Text className="text-lg font-semibold text-white">Create Project</Text>}
+          {saving ? (
+            <ActivityIndicator color="#03140d" />
+          ) : (
+            <Text className="font-inter-bold text-[13px] uppercase tracking-[1.2px] text-primary-on">
+              Create Project
+            </Text>
+          )}
         </TouchableOpacity>
       </View>
 
