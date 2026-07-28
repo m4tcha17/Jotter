@@ -259,6 +259,7 @@ import androidx.camera.core.ImageCapture
 import androidx.camera.core.Preview
 import androidx.camera.core.UseCaseGroup
 import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.camera.lifecycle.awaitInstance
 import androidx.camera.view.PreviewView
 import androidx.lifecycle.LifecycleOwner
 import kotlinx.coroutines.CoroutineScope
