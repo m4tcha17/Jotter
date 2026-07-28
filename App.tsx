@@ -14,7 +14,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import { createSessionFromUrl } from './lib/oauth';
+import { createSessionFromUrl } from './modules/auth/api';
 import { flushPendingRevocations, supabase } from './lib/supabase';
 import { RootNavigator } from './navigation/RootNavigator';
 

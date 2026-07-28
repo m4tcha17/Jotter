@@ -24,15 +24,16 @@ Jotter is a mobile data-collection app: capture a photo, log structured data aga
 
 ## Project Structure
 
-Screens are organized by use case, one directory per navigation destination group, matching the outer/inner navigation split described under Navigation Structure below. Each source directory carries its own `CLAUDE.md` scoped to that directory — the root `CLAUDE.md` holds only what's true everywhere; anything specific to one screen, flow, or layer lives in that directory's own file instead.
+Code is organized by domain module, not by layer — each module owns both its screens/components and its own data-access functions (`api.ts`, where it has one), matching the outer/inner navigation split described under Navigation Structure below. Each source directory carries its own `CLAUDE.md` scoped to that directory — the root `CLAUDE.md` holds only what's true everywhere; anything specific to one module, flow, or layer lives in that directory's own file instead.
 
 ```
-screens/
-├── CLAUDE.md                       # shared screen conventions + directory map
+modules/
+├── CLAUDE.md                       # shared module conventions + directory map
 ├── auth/                           # pre-session
 │   ├── CLAUDE.md
 │   ├── LandingScreen.tsx
-│   └── SignInScreen.tsx
+│   ├── SignInScreen.tsx
+│   └── api.ts                      # signInWithGoogle, signInWithGithub, createSessionFromUrl
 ├── account/                        # account-level settings (not project-specific)
 │   ├── CLAUDE.md
 │   └── AccountScreen.tsx
@@ -40,35 +41,38 @@ screens/
 │   ├── CLAUDE.md
 │   ├── ProjectsScreen.tsx
 │   ├── CreateProjectScreen.tsx
-│   └── ProjectSettingsScreen.tsx
-├── capture/                        # inner tab
+│   ├── ProjectSettingsScreen.tsx
+│   └── api.ts                      # fetchProjects, createProject, deleteProject
+├── fields/                         # project field/category schema
+│   ├── CLAUDE.md
+│   ├── FieldsScreen.tsx            # inner tab
+│   ├── AddFieldModal.tsx           # shared with projects/CreateProjectScreen.tsx
+│   └── api.ts                      # fetchFields, addField, deleteField, fetchGlobalCategories, insertFieldWithCategory
+├── capture/                        # inner tab: capture-flow orchestrator
 │   ├── CLAUDE.md
 │   ├── CaptureScreen.tsx           # orchestrator/state machine
 │   ├── AngleAssistStep.tsx         # DeviceMotion tilt/level indicator
-│   ├── CameraCaptureStep.tsx       # interim capture UI (expo-camera, auto exposure)
-│   └── SampleForm.tsx              # per-sample logging form
-├── fields/                         # inner tab
+│   └── api.ts                      # fetchCaptureSlots
+├── camera/                         # camera hardware wrapper (no screens of its own)
 │   ├── CLAUDE.md
-│   └── FieldsScreen.tsx
+│   └── CameraCaptureStep.tsx       # interim capture UI (expo-camera, auto exposure) — used by capture/ and samples/
+├── samples/                        # per-sample logging form + sample data access
+│   ├── CLAUDE.md
+│   ├── SampleForm.tsx
+│   └── api.ts                      # createSample, checkIdentifierDuplicate, fetchSamples
 └── data/                           # inner tab
     ├── CLAUDE.md
     └── DataScreen.tsx
 
-components/                         # UI shared across more than one screens/ use case
-├── CLAUDE.md
-└── AddFieldModal.tsx               # shared by projects/CreateProjectScreen.tsx and fields/FieldsScreen.tsx
-
-navigation/
+navigation/                         # composition root — wires modules/ together, doesn't move into it
 ├── CLAUDE.md
 ├── RootNavigator.tsx               # outer stack: Landing, SignIn, Main, CreateProject, ProjectHome, ProjectSettings
 ├── MainTabs.tsx                    # outer tabs: Projects, Account
 └── ProjectTabs.tsx                 # inner tabs: Capture, Fields, Data (mounted at ProjectHome)
 
-lib/
+lib/                                # cross-cutting infra only
 ├── CLAUDE.md
-├── supabase.ts
-├── oauth.ts
-└── projects.ts
+└── supabase.ts
 
 docs/
 ├── CLAUDE.md

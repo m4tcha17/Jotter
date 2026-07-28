@@ -11,6 +11,7 @@ Expo, React Native, Supabase, TypeScript
 - Ask before touching files outside the current task scope
 - Never touch sensitive files (e.g. .env, .env.*, credentials, keys) — do not read, edit, print, or move them
 
+
 ## Skills
 
 Reach for these before doing the work by hand — check first, don't skip:
@@ -23,7 +24,7 @@ Reach for these before doing the work by hand — check first, don't skip:
 
 ## Directory-level context
 
-Source directories carry their own CLAUDE.md scoped to what that directory actually does — read the one for wherever you're working, in addition to this file: `screens/` (plus one per use-case subdirectory: `auth/`, `account/`, `projects/`, `capture/`, `fields/`, `data/`), `components/`, `navigation/`, `lib/`, `docs/`. See `docs/architecture.md`'s Project Structure section for the full tree. This file holds only what's true everywhere — anything specific to one screen, flow, or layer belongs in that directory's own CLAUDE.md instead.
+Source directories carry their own CLAUDE.md scoped to what that directory actually does — read the one for wherever you're working, in addition to this file: `modules/` (plus one per domain subdirectory: `auth/`, `account/`, `projects/`, `fields/`, `capture/`, `camera/`, `samples/`, `data/`), `navigation/`, `lib/`, `docs/`. See `docs/architecture.md`'s Project Structure section for the full tree. This file holds only what's true everywhere — anything specific to one module, flow, or layer belongs in that directory's own CLAUDE.md instead.
 
 ## Current task
 

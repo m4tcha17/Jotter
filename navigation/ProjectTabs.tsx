@@ -4,9 +4,9 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import CaptureScreen from '../screens/capture/CaptureScreen';
-import DataScreen from '../screens/data/DataScreen';
-import FieldsScreen from '../screens/fields/FieldsScreen';
+import CaptureScreen from '../modules/capture/CaptureScreen';
+import DataScreen from '../modules/data/DataScreen';
+import FieldsScreen from '../modules/fields/FieldsScreen';
 import type { RootStackParamList } from './RootNavigator';
 
 export type ProjectTabParamList = {
