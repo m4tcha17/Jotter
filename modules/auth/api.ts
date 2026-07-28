@@ -4,7 +4,7 @@ import * as QueryParams from 'expo-auth-session/build/QueryParams';
 import { Platform } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 
-import { supabase } from './supabase';
+import { supabase } from '../../lib/supabase';
 
 WebBrowser.maybeCompleteAuthSession();
 

@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { ActivityIndicator, Alert, Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
-import { checkIdentifierDuplicate } from '../../lib/projects';
-import type { NewSampleValue, ProjectField } from '../../lib/projects';
-import CameraCaptureStep from './CameraCaptureStep';
+import { checkIdentifierDuplicate } from './api';
+import type { NewSampleValue } from './api';
+import type { ProjectField } from '../fields/api';
+import CameraCaptureStep from '../camera/CameraCaptureStep';
 
 const INPUT_BASE = 'h-[56px] border-2 px-4 font-inter text-lg text-ink';
 const CHIP_BASE = 'h-12 items-center justify-center border-2 px-4';

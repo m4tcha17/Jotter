@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Alert, Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import type { CategoryScope, ExistingCategory, FieldDataType, NewFieldInput } from '../lib/projects';
+import type { CategoryScope, ExistingCategory, FieldDataType, NewFieldInput } from './api';
 
 const DATA_TYPES: { value: FieldDataType; label: string }[] = [
   { value: 'text', label: 'Text' },

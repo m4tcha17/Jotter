@@ -4,9 +4,12 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import AddFieldModal from '../../components/AddFieldModal';
-import { createProject, DATA_TYPE_LABELS, fetchGlobalCategories } from '../../lib/projects';
-import type { CaptureMode, CaptureSlotInput, ExistingCategory, NewFieldInput } from '../../lib/projects';
+import AddFieldModal from '../fields/AddFieldModal';
+import { DATA_TYPE_LABELS, fetchGlobalCategories } from '../fields/api';
+import type { ExistingCategory, NewFieldInput } from '../fields/api';
+import type { CaptureSlotInput } from '../capture/api';
+import { createProject } from './api';
+import type { CaptureMode } from './api';
 import type { RootStackParamList } from '../../navigation/RootNavigator';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CreateProject'>;

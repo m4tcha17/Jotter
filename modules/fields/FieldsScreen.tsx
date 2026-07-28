@@ -5,9 +5,9 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import AddFieldModal from '../../components/AddFieldModal';
-import { addField, DATA_TYPE_LABELS, deleteField, fetchFields, fetchGlobalCategories } from '../../lib/projects';
-import type { ExistingCategory, ProjectField } from '../../lib/projects';
+import AddFieldModal from './AddFieldModal';
+import { addField, DATA_TYPE_LABELS, deleteField, fetchFields, fetchGlobalCategories } from './api';
+import type { ExistingCategory, ProjectField } from './api';
 import type { ProjectTabParamList } from '../../navigation/ProjectTabs';
 
 type Props = BottomTabScreenProps<ProjectTabParamList, 'Fields'>;

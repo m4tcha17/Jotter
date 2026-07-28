@@ -3,12 +3,16 @@ import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { createSample, fetchCaptureSlots, fetchFields } from '../../lib/projects';
-import type { CaptureSlot, NewSamplePhoto, NewSampleValue, ProjectField } from '../../lib/projects';
+import { fetchCaptureSlots } from './api';
+import type { CaptureSlot } from './api';
+import { fetchFields } from '../fields/api';
+import type { ProjectField } from '../fields/api';
+import { createSample } from '../samples/api';
+import type { NewSamplePhoto, NewSampleValue } from '../samples/api';
 import type { ProjectTabParamList } from '../../navigation/ProjectTabs';
 import AngleAssistStep from './AngleAssistStep';
-import CameraCaptureStep from './CameraCaptureStep';
-import SampleForm from './SampleForm';
+import CameraCaptureStep from '../camera/CameraCaptureStep';
+import SampleForm from '../samples/SampleForm';
 
 type Props = BottomTabScreenProps<ProjectTabParamList, 'Capture'>;
 

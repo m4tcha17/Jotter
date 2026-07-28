@@ -6,8 +6,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, Easing, FlatList, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { fetchProjects } from '../../lib/projects';
-import type { Project } from '../../lib/projects';
+import { fetchProjects } from './api';
+import type { Project } from './api';
 import type { MainTabParamList } from '../../navigation/MainTabs';
 import type { RootStackParamList } from '../../navigation/RootNavigator';
 

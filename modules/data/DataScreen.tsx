@@ -4,8 +4,12 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, Image, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { DATA_TYPE_LABELS, fetchCaptureSlots, fetchFields, fetchSamples } from '../../lib/projects';
-import type { CaptureSlot, ProjectField, SampleRow } from '../../lib/projects';
+import { fetchCaptureSlots } from '../capture/api';
+import type { CaptureSlot } from '../capture/api';
+import { DATA_TYPE_LABELS, fetchFields } from '../fields/api';
+import type { ProjectField } from '../fields/api';
+import { fetchSamples } from '../samples/api';
+import type { SampleRow } from '../samples/api';
 import type { ProjectTabParamList } from '../../navigation/ProjectTabs';
 
 type Props = BottomTabScreenProps<ProjectTabParamList, 'Data'>;

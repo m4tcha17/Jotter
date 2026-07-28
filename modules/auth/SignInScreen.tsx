@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { ActivityIndicator, Alert, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { signInWithGithub, signInWithGoogle } from '../../lib/oauth';
+import { signInWithGithub, signInWithGoogle } from './api';
 import { supabase } from '../../lib/supabase';
 import type { RootStackParamList } from '../../navigation/RootNavigator';
 

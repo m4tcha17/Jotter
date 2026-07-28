@@ -1,0 +1,7 @@
+# modules/camera/
+
+`CameraCaptureStep.tsx` — the camera hardware wrapper: permission request UI, `CameraView` preview, shutter button. Pure UI/hardware, zero data-layer imports — reused by both `modules/capture/CaptureScreen.tsx` (slot photos) and `modules/samples/SampleForm.tsx` (`photo`-data-type field capture, via a `Modal`).
+
+- Currently running on `expo-camera`'s stock **auto-exposure** API as an explicitly-labeled interim placeholder — shows an "Auto exposure — placeholder" banner. Still blocked on a custom native Android camera module (Kotlin, `Camera2Interop`) for actual locked manual exposure (ISO/shutter/white-balance) — that swap is a future task, not scoped here. When the native module lands, this is the file to replace; don't let its placeholder banner rot into looking like a real feature.
+- Don't implement capture against `expo-camera`'s stock API **as a stand-in for locked exposure** — it has no ISO/shutter/white-balance controls (verified against the SDK 56 docs; only `zoom`/`flash`/`enableTorch`/`autofocus`/`active` are exposed). Using it for an explicitly-labeled interim placeholder (what's built now) is fine; presenting it as the real thing is not.
+- Only works on devices reporting Camera2 hardware level `LIMITED` or better — this is a hard hardware ceiling, not a software gap to work around. The hardware capability spike (`docs/current-task.md` build order step 3) still hasn't run against a real device.
