@@ -218,15 +218,6 @@ export async function deleteField(fieldId: string): Promise<void> {
   if (error) throw error;
 }
 
-export async function fetchSampleCount(projectId: string): Promise<number> {
-  const { count, error } = await supabase
-    .from('samples')
-    .select('id', { count: 'exact', head: true })
-    .eq('project_id', projectId);
-  if (error) throw error;
-  return count ?? 0;
-}
-
 export async function fetchCaptureSlots(projectId: string): Promise<CaptureSlot[]> {
   const { data, error } = await supabase
     .from('capture_slots')
@@ -256,6 +247,43 @@ export async function checkIdentifierDuplicate(
 
 export type NewSamplePhoto = { captureSlotId: string; localUri: string };
 export type NewSampleValue = { fieldId: string; value: string };
+
+export type SamplePhoto = { localUri: string | null; remoteUrl: string | null };
+export type SampleRow = {
+  id: string;
+  createdAt: string;
+  values: Record<string, string>;
+  photos: Record<string, SamplePhoto>;
+};
+
+export async function fetchSamples(projectId: string): Promise<SampleRow[]> {
+  const { data, error } = await supabase
+    .from('samples')
+    .select(
+      'id, created_at, sample_values(field_id, value), ' +
+        'sample_photos(capture_slot_id, photo_local_uri, photo_remote_url)',
+    )
+    .eq('project_id', projectId)
+    .order('created_at');
+  if (error) throw error;
+
+  type RawSampleRow = {
+    id: string;
+    created_at: string;
+    sample_values: { field_id: string; value: string }[];
+    sample_photos: { capture_slot_id: string; photo_local_uri: string | null; photo_remote_url: string | null }[];
+  };
+  const rows = (data ?? []) as unknown as RawSampleRow[];
+
+  return rows.map((row) => ({
+    id: row.id,
+    createdAt: row.created_at,
+    values: Object.fromEntries(row.sample_values.map((v) => [v.field_id, v.value])),
+    photos: Object.fromEntries(
+      row.sample_photos.map((p) => [p.capture_slot_id, { localUri: p.photo_local_uri, remoteUrl: p.photo_remote_url }]),
+    ),
+  }));
+}
 
 export async function createSample(
   projectId: string,
