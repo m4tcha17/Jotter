@@ -1,9 +1,9 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
-import CreateProjectScreen from '../screens/CreateProjectScreen';
-import LandingScreen from '../screens/LandingScreen';
-import ProjectSettingsScreen from '../screens/ProjectSettingsScreen';
-import SignInScreen from '../screens/SignInScreen';
+import CreateProjectScreen from '../screens/projects/CreateProjectScreen';
+import LandingScreen from '../screens/auth/LandingScreen';
+import ProjectSettingsScreen from '../screens/projects/ProjectSettingsScreen';
+import SignInScreen from '../screens/auth/SignInScreen';
 import { MainTabs } from './MainTabs';
 import { ProjectTabs } from './ProjectTabs';
 

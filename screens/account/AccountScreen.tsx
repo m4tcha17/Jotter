@@ -3,12 +3,12 @@ import type { CompositeScreenProps } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { User } from '@supabase/supabase-js';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { supabase } from '../lib/supabase';
-import type { MainTabParamList } from '../navigation/MainTabs';
-import type { RootStackParamList } from '../navigation/RootNavigator';
+import { signOutLocally, supabase } from '../../lib/supabase';
+import type { MainTabParamList } from '../../navigation/MainTabs';
+import type { RootStackParamList } from '../../navigation/RootNavigator';
 
 type Props = CompositeScreenProps<
   BottomTabScreenProps<MainTabParamList, 'Account'>,
@@ -32,22 +32,8 @@ export default function AccountScreen({ navigation }: Props) {
 
   async function handleSignOut() {
     setSigningOut(true);
-    // supabase-js's signOut() always POSTs /logout, even at scope: 'local' — scope only
-    // changes what the server revokes, it doesn't skip the request. That request has no
-    // built-in timeout, so on poor/no connectivity it can hang indefinitely. Race it
-    // against a short timeout and proceed locally either way: matches this app's
-    // offline-first stance that server sync is best-effort, never a hard dependency for
-    // a core flow like signing out.
-    const result = await Promise.race([
-      supabase.auth.signOut({ scope: 'local' }),
-      new Promise<null>((resolve) => setTimeout(() => resolve(null), 4000)),
-    ]);
+    await signOutLocally();
     setSigningOut(false);
-
-    if (result?.error) {
-      Alert.alert('Could not sign out', result.error.message);
-      return;
-    }
 
     // Don't rely solely on App.tsx's reactive session listener to redirect —
     // reset the root stack directly so this is immediate and guaranteed.

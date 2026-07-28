@@ -14,6 +14,10 @@ const DATA_TYPES: { value: FieldDataType; label: string }[] = [
   { value: 'timestamp', label: 'Timestamp (auto)' },
 ];
 
+const INPUT_BASE = 'border-2 px-4 font-inter text-lg text-ink';
+const CHIP_BASE = 'h-12 items-center justify-center border-2 px-4';
+const CHIP_LABEL_BASE = 'font-inter-bold text-[13px] uppercase tracking-[1.2px]';
+
 type Props = {
   visible: boolean;
   existingCategories: ExistingCategory[];
@@ -23,15 +27,18 @@ type Props = {
 
 export default function AddFieldModal({ visible, existingCategories, onClose, onAdd }: Props) {
   const [name, setName] = useState('');
+  const [nameFocused, setNameFocused] = useState(false);
   const [dataType, setDataType] = useState<FieldDataType | null>(null);
   const [categoryMode, setCategoryMode] = useState<'existing' | 'new'>(
     existingCategories.length > 0 ? 'existing' : 'new',
   );
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [newCategoryName, setNewCategoryName] = useState('');
+  const [newCategoryNameFocused, setNewCategoryNameFocused] = useState(false);
   const [newCategoryScope, setNewCategoryScope] = useState<CategoryScope>('field');
   const [options, setOptions] = useState<string[]>([]);
   const [optionDraft, setOptionDraft] = useState('');
+  const [optionDraftFocused, setOptionDraftFocused] = useState(false);
 
   function reset() {
     setName('');
@@ -95,36 +102,38 @@ export default function AddFieldModal({ visible, existingCategories, onClose, on
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
-      <SafeAreaView className="flex-1 bg-white">
+      <SafeAreaView className="flex-1 bg-canvas">
         <ScrollView className="flex-1 px-6 pt-6" keyboardShouldPersistTaps="handled">
-          <Text className="text-2xl font-bold text-slate-900">Add Field</Text>
+          <Text className="font-inter-black text-[26px] uppercase leading-[1.1] tracking-[0.2px] text-ink">
+            Add Field
+          </Text>
 
-          <Text className="mt-6 text-base font-semibold text-slate-700">Field name</Text>
+          <Text className="mt-6 font-inter-bold text-base text-body-strong">Field name</Text>
           <TextInput
             accessibilityLabel="Field name"
             placeholder="e.g. Moisture %"
+            placeholderTextColor="#7a7a7a"
             value={name}
             onChangeText={setName}
-            className="mt-2 min-h-[56px] rounded-xl border-2 border-slate-300 px-4 text-lg text-slate-900"
+            onFocus={() => setNameFocused(true)}
+            onBlur={() => setNameFocused(false)}
+            className={`mt-2 h-[56px] ${INPUT_BASE} ${nameFocused ? 'border-primary' : 'border-hairline-strong'}`}
           />
 
-          <Text className="mt-6 text-base font-semibold text-slate-700">Data type</Text>
+          <Text className="mt-6 font-inter-bold text-base text-body-strong">Data type</Text>
           <View className="mt-2 flex-row flex-wrap gap-2">
             {DATA_TYPES.map((type) => (
               <TouchableOpacity
                 key={type.value}
                 accessibilityRole="button"
                 accessibilityLabel={`Data type: ${type.label}`}
+                activeOpacity={0.7}
                 onPress={() => setDataType(type.value)}
-                className={`min-h-[48px] items-center justify-center rounded-xl border-2 px-4 ${
-                  dataType === type.value ? 'border-emerald-600 bg-emerald-50' : 'border-slate-300'
+                className={`${CHIP_BASE} ${
+                  dataType === type.value ? 'border-primary bg-surface-elevated' : 'border-hairline-strong'
                 }`}
               >
-                <Text
-                  className={`text-base font-semibold ${
-                    dataType === type.value ? 'text-emerald-700' : 'text-slate-700'
-                  }`}
-                >
+                <Text className={`${CHIP_LABEL_BASE} ${dataType === type.value ? 'text-primary' : 'text-body'}`}>
                   {type.label}
                 </Text>
               </TouchableOpacity>
@@ -137,29 +146,37 @@ export default function AddFieldModal({ visible, existingCategories, onClose, on
                 <TouchableOpacity
                   accessibilityRole="button"
                   accessibilityLabel="Use an existing category"
+                  activeOpacity={0.7}
                   onPress={() => setCategoryMode('existing')}
-                  className={`min-h-[48px] flex-1 items-center justify-center rounded-xl border-2 ${
-                    categoryMode === 'existing' ? 'border-emerald-600 bg-emerald-50' : 'border-slate-300'
+                  className={`${CHIP_BASE} flex-1 ${
+                    categoryMode === 'existing' ? 'border-primary bg-surface-elevated' : 'border-hairline-strong'
                   }`}
                 >
-                  <Text className="text-base font-semibold text-slate-700">Use existing</Text>
+                  <Text
+                    className={`${CHIP_LABEL_BASE} ${categoryMode === 'existing' ? 'text-primary' : 'text-body'}`}
+                  >
+                    Use existing
+                  </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   accessibilityRole="button"
                   accessibilityLabel="Create a new category"
+                  activeOpacity={0.7}
                   onPress={() => setCategoryMode('new')}
-                  className={`min-h-[48px] flex-1 items-center justify-center rounded-xl border-2 ${
-                    categoryMode === 'new' ? 'border-emerald-600 bg-emerald-50' : 'border-slate-300'
+                  className={`${CHIP_BASE} flex-1 ${
+                    categoryMode === 'new' ? 'border-primary bg-surface-elevated' : 'border-hairline-strong'
                   }`}
                 >
-                  <Text className="text-base font-semibold text-slate-700">Create new</Text>
+                  <Text className={`${CHIP_LABEL_BASE} ${categoryMode === 'new' ? 'text-primary' : 'text-body'}`}>
+                    Create new
+                  </Text>
                 </TouchableOpacity>
               </View>
 
               {categoryMode === 'existing' ? (
                 <View className="mt-4">
                   {existingCategories.length === 0 ? (
-                    <Text className="text-base text-slate-500">
+                    <Text className="font-inter-light text-base text-body">
                       No global categories yet — create one instead.
                     </Text>
                   ) : (
@@ -168,12 +185,21 @@ export default function AddFieldModal({ visible, existingCategories, onClose, on
                         key={category.id}
                         accessibilityRole="button"
                         accessibilityLabel={`Select category ${category.name}`}
+                        activeOpacity={0.7}
                         onPress={() => setSelectedCategoryId(category.id)}
-                        className={`mt-2 min-h-[48px] justify-center rounded-xl border-2 px-4 ${
-                          selectedCategoryId === category.id ? 'border-emerald-600 bg-emerald-50' : 'border-slate-300'
+                        className={`mt-2 h-12 justify-center border-2 px-4 ${
+                          selectedCategoryId === category.id
+                            ? 'border-primary bg-surface-elevated'
+                            : 'border-hairline-strong'
                         }`}
                       >
-                        <Text className="text-base font-semibold text-slate-700">{category.name}</Text>
+                        <Text
+                          className={`${CHIP_LABEL_BASE} ${
+                            selectedCategoryId === category.id ? 'text-primary' : 'text-body'
+                          }`}
+                        >
+                          {category.name}
+                        </Text>
                       </TouchableOpacity>
                     ))
                   )}
@@ -183,44 +209,68 @@ export default function AddFieldModal({ visible, existingCategories, onClose, on
                   <TextInput
                     accessibilityLabel="Category name"
                     placeholder="e.g. Classification"
+                    placeholderTextColor="#7a7a7a"
                     value={newCategoryName}
                     onChangeText={setNewCategoryName}
-                    className="min-h-[56px] rounded-xl border-2 border-slate-300 px-4 text-lg text-slate-900"
+                    onFocus={() => setNewCategoryNameFocused(true)}
+                    onBlur={() => setNewCategoryNameFocused(false)}
+                    className={`h-[56px] ${INPUT_BASE} ${
+                      newCategoryNameFocused ? 'border-primary' : 'border-hairline-strong'
+                    }`}
                   />
 
                   <View className="mt-3 flex-row gap-2">
                     <TouchableOpacity
                       accessibilityRole="button"
                       accessibilityLabel="Global category — reusable across projects"
+                      activeOpacity={0.7}
                       onPress={() => setNewCategoryScope('global')}
-                      className={`min-h-[48px] flex-1 items-center justify-center rounded-xl border-2 ${
-                        newCategoryScope === 'global' ? 'border-emerald-600 bg-emerald-50' : 'border-slate-300'
+                      className={`${CHIP_BASE} flex-1 ${
+                        newCategoryScope === 'global' ? 'border-primary bg-surface-elevated' : 'border-hairline-strong'
                       }`}
                     >
-                      <Text className="text-base font-semibold text-slate-700">Global</Text>
+                      <Text
+                        className={`${CHIP_LABEL_BASE} ${
+                          newCategoryScope === 'global' ? 'text-primary' : 'text-body'
+                        }`}
+                      >
+                        Global
+                      </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       accessibilityRole="button"
                       accessibilityLabel="Just this field"
+                      activeOpacity={0.7}
                       onPress={() => setNewCategoryScope('field')}
-                      className={`min-h-[48px] flex-1 items-center justify-center rounded-xl border-2 ${
-                        newCategoryScope === 'field' ? 'border-emerald-600 bg-emerald-50' : 'border-slate-300'
+                      className={`${CHIP_BASE} flex-1 ${
+                        newCategoryScope === 'field' ? 'border-primary bg-surface-elevated' : 'border-hairline-strong'
                       }`}
                     >
-                      <Text className="text-base font-semibold text-slate-700">Just this field</Text>
+                      <Text
+                        className={`${CHIP_LABEL_BASE} ${newCategoryScope === 'field' ? 'text-primary' : 'text-body'}`}
+                      >
+                        Just this field
+                      </Text>
                     </TouchableOpacity>
                   </View>
 
-                  <Text className="mt-4 text-base font-semibold text-slate-700">Options</Text>
+                  <Text className="mt-4 font-inter-bold text-base text-body-strong">Options</Text>
                   {options.map((option, index) => (
-                    <View key={`${option}-${index}`} className="mt-2 flex-row items-center justify-between">
-                      <Text className="text-base text-slate-900">{option}</Text>
+                    <View
+                      key={`${option}-${index}`}
+                      className="mt-2 flex-row items-center justify-between"
+                    >
+                      <Text className="font-inter text-base text-ink">{option}</Text>
                       <TouchableOpacity
                         accessibilityRole="button"
                         accessibilityLabel={`Remove option ${option}`}
+                        activeOpacity={0.7}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                         onPress={() => setOptions(options.filter((_, i) => i !== index))}
                       >
-                        <Text className="text-base font-semibold text-red-600">Remove</Text>
+                        <Text className="font-inter-bold text-[13px] uppercase tracking-[1.2px] text-destructive">
+                          Remove
+                        </Text>
                       </TouchableOpacity>
                     </View>
                   ))}
@@ -228,18 +278,24 @@ export default function AddFieldModal({ visible, existingCategories, onClose, on
                     <TextInput
                       accessibilityLabel="New option"
                       placeholder="e.g. Wet"
+                      placeholderTextColor="#7a7a7a"
                       value={optionDraft}
                       onChangeText={setOptionDraft}
+                      onFocus={() => setOptionDraftFocused(true)}
+                      onBlur={() => setOptionDraftFocused(false)}
                       onSubmitEditing={handleAddOption}
-                      className="min-h-[48px] flex-1 rounded-xl border-2 border-slate-300 px-4 text-base text-slate-900"
+                      className={`h-12 flex-1 border-2 px-4 font-inter text-base text-ink ${
+                        optionDraftFocused ? 'border-primary' : 'border-hairline-strong'
+                      }`}
                     />
                     <TouchableOpacity
                       accessibilityRole="button"
                       accessibilityLabel="Add option"
+                      activeOpacity={0.7}
                       onPress={handleAddOption}
-                      className="min-h-[48px] items-center justify-center rounded-xl border-2 border-slate-300 px-4"
+                      className="h-12 items-center justify-center border-2 border-hairline-strong px-4"
                     >
-                      <Text className="text-base font-semibold text-slate-700">Add</Text>
+                      <Text className="font-inter-bold text-[13px] uppercase tracking-[1.2px] text-ink">Add</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -248,25 +304,27 @@ export default function AddFieldModal({ visible, existingCategories, onClose, on
           )}
         </ScrollView>
 
-        <View className="flex-row gap-3 border-t border-slate-100 px-6 py-4">
+        <View className="flex-row gap-3 border-t border-hairline px-6 py-4">
           <TouchableOpacity
             accessibilityRole="button"
             accessibilityLabel="Cancel"
+            activeOpacity={0.7}
             onPress={() => {
               reset();
               onClose();
             }}
-            className="min-h-[56px] flex-1 items-center justify-center rounded-xl border-2 border-slate-300"
+            className="h-[56px] flex-1 items-center justify-center border-2 border-hairline-strong"
           >
-            <Text className="text-lg font-semibold text-slate-700">Cancel</Text>
+            <Text className="font-inter-bold text-[13px] uppercase tracking-[1.2px] text-ink">Cancel</Text>
           </TouchableOpacity>
           <TouchableOpacity
             accessibilityRole="button"
             accessibilityLabel="Add field"
+            activeOpacity={0.85}
             onPress={handleSubmit}
-            className="min-h-[56px] flex-1 items-center justify-center rounded-xl bg-emerald-600"
+            className="h-[56px] flex-1 items-center justify-center bg-primary"
           >
-            <Text className="text-lg font-semibold text-white">Add Field</Text>
+            <Text className="font-inter-bold text-[13px] uppercase tracking-[1.2px] text-primary-on">Add Field</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>

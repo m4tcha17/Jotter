@@ -22,6 +22,62 @@ Jotter is a mobile data-collection app: capture a photo, log structured data aga
 - Supabase (Postgres + Auth + Storage) as the remote backend for sync, backup, and sharing.
 - `@react-native-async-storage/async-storage` for Supabase auth session persistence.
 
+## Project Structure
+
+Screens are organized by use case, one directory per navigation destination group, matching the outer/inner navigation split described under Navigation Structure below. Each source directory carries its own `CLAUDE.md` scoped to that directory — the root `CLAUDE.md` holds only what's true everywhere; anything specific to one screen, flow, or layer lives in that directory's own file instead.
+
+```
+screens/
+├── CLAUDE.md                       # shared screen conventions + directory map
+├── auth/                           # pre-session
+│   ├── CLAUDE.md
+│   ├── LandingScreen.tsx
+│   └── SignInScreen.tsx
+├── account/                        # account-level settings (not project-specific)
+│   ├── CLAUDE.md
+│   └── AccountScreen.tsx
+├── projects/                       # outer-level list/switcher + creation + settings
+│   ├── CLAUDE.md
+│   ├── ProjectsScreen.tsx
+│   ├── CreateProjectScreen.tsx
+│   └── ProjectSettingsScreen.tsx
+├── capture/                        # inner tab
+│   ├── CLAUDE.md
+│   ├── CaptureScreen.tsx           # orchestrator/state machine
+│   ├── AngleAssistStep.tsx         # DeviceMotion tilt/level indicator
+│   ├── CameraCaptureStep.tsx       # interim capture UI (expo-camera, auto exposure)
+│   └── SampleForm.tsx              # per-sample logging form
+├── fields/                         # inner tab
+│   ├── CLAUDE.md
+│   └── FieldsScreen.tsx
+└── data/                           # inner tab
+    ├── CLAUDE.md
+    └── DataScreen.tsx
+
+components/                         # UI shared across more than one screens/ use case
+├── CLAUDE.md
+└── AddFieldModal.tsx               # shared by projects/CreateProjectScreen.tsx and fields/FieldsScreen.tsx
+
+navigation/
+├── CLAUDE.md
+├── RootNavigator.tsx               # outer stack: Landing, SignIn, Main, CreateProject, ProjectHome, ProjectSettings
+├── MainTabs.tsx                    # outer tabs: Projects, Account
+└── ProjectTabs.tsx                 # inner tabs: Capture, Fields, Data (mounted at ProjectHome)
+
+lib/
+├── CLAUDE.md
+├── supabase.ts
+├── oauth.ts
+└── projects.ts
+
+docs/
+├── CLAUDE.md
+├── architecture.md
+├── current-task.md
+├── design-blueprint.md
+└── schema.sql
+```
+
 ## Auth Model
 - Every user is a real Supabase Auth user — there is no separate "local-only" code path.
 - **Guest**: signed in via Supabase anonymous auth (`signInAnonymously`) on first launch. Fully functional, but has no email and cannot send/receive project invites.
