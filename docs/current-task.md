@@ -1,5 +1,28 @@
 # Current Task
 
+**Capture flow skeleton — built, running on auto-exposure `expo-camera` as a labeled placeholder; on-device testing still needed.**
+
+Replaces the `CaptureScreen` placeholder with the real flow described in `docs/architecture.md`'s Navigation Structure, minus the native camera module (deferred — see `screens/capture/CLAUDE.md`):
+
+- `screens/capture/CaptureScreen.tsx` — orchestrator/state machine: loads `capture_slots` + `fields` for the project, steps through slots in order (angle-assist → camera, per slot), then the logging form, then save.
+- `screens/capture/AngleAssistStep.tsx` — `expo-sensors` `DeviceMotion` tilt/level indicator, green border + haptic when the phone matches a slot's `target_angle_degrees`.
+- `screens/capture/CameraCaptureStep.tsx` — interim capture UI on `expo-camera`'s stock (auto-exposure) API, explicitly labeled as a placeholder in the UI itself; shared by slot capture and `photo`-data-type fields.
+- `screens/capture/SampleForm.tsx` — one input per field in `sort_order`, `timestamp` fields filtered out, `is_required` hard-blocks Save Sample, `is_sample_identifier` duplicate-checked at submit via `checkIdentifierDuplicate` (non-blocking `Alert`).
+- `lib/projects.ts` — added `fetchCaptureSlots`, `checkIdentifierDuplicate`, `createSample` (inserts `samples` + `sample_photos` + `sample_values`); extended `fetchFields`/`ProjectField` to select `is_required`, `is_sample_identifier`, and category options (needed to render category chips and enforce the above — previously only `category.name` was fetched).
+
+**Not yet done / acceptance criteria before calling this finished:**
+- On-device testing: single-mode project (one hidden slot, no angle-assist) end to end; multi-mode project with a slot that has a `target_angle_degrees` (confirm tilt indicator + haptic); every field data type in the form, including `category` chips and `photo` sub-capture; required-field block; identifier duplicate warning (needs a field manually flipped to `is_sample_identifier = true` in the DB, since there's no UI toggle yet — see gap below).
+- Camera permission prompt flow (first launch) not yet verified on-device.
+- No retake/confirm step after a slot photo is taken (by design — architecture's "no branching mid-flow" rule) or after a field's `photo` sub-capture (allowed, since that's a self-contained control, not the main flow) — verify this feels right in hand, not just on paper.
+
+**Known gaps, not blocking (carried over or newly surfaced):**
+- No field can have `is_required`/`is_sample_identifier` set yet (Fields/Add Field UI toggle is build order step 5b, unbuilt) — the enforcement code above is currently a no-op in practice.
+- Dependent category fields (`field_category_rules` auto-fill) not implemented in the form — nothing can set `source_field_id` yet (build order step 5, unbuilt).
+- Writes go straight to Supabase, same as the rest of `lib/projects.ts` — offline-first SQLite (step 2) and immediate-sync-on-completion (step 9) still unbuilt. Photos save as local URIs only; no Storage upload yet.
+- Native camera module + hardware capability spike (build order step 3) still not done — Capture runs on auto exposure in the meantime.
+
+---
+
 **Data integrity: required fields + sample-identifier duplicate checking — schema done, UI not built yet.**
 
 Formalizes three behaviors the user's methodology write-up describes, committing them as real planned features rather than leaving them as unstated assumptions:
@@ -29,7 +52,7 @@ Builds out the "inside a project" navigation level described in `docs/architectu
 
 - **`navigation/ProjectTabs.tsx`**: the real inner tab bar — Capture / Fields / Data — shown once a project is opened, with a thin header above it (back-to-Projects arrow, project name, settings gear). Wired into `RootNavigator` as what the `ProjectHome` route now renders (route name unchanged, so `CreateProjectScreen`/`ProjectsScreen`'s existing `navigate('ProjectHome', ...)` calls needed no changes).
 - **`screens/fields/FieldsScreen.tsx`** — plain list of the project's fields (name, type, category), not a spreadsheet. Locked/read-only by default — an "Edit" button in the top-right toggles edit mode, which is the only state that exposes the per-field delete and the "+ Add Field" action, preventing accidental changes to the schema.
-- **`screens/capture/CaptureScreen.tsx`** — still a template/placeholder page, blocked on the camera hardware spike + native module.
+- **`screens/capture/CaptureScreen.tsx`** — was a template/placeholder page at the time; superseded above by the real capture flow skeleton (still on auto-exposure, pending the camera hardware spike + native module).
 - **`screens/data/DataScreen.tsx`** — placeholder empty state until the project has at least one sample (`lib/projects.ts`'s new `fetchSampleCount`); once samples exist, renders the Excel-style sheet (spreadsheet column letters, frozen row-number gutter, one row per sample) that used to live on Fields. Row *count* now reflects real `samples` rows; cell values are still empty pending `sample_values` fetching (later step).
 - **`screens/projects/ProjectSettingsScreen.tsx`** (new) — the Delete Project button + confirmation, moved here from the old `ProjectHomeScreen` now that the settings gear is its home instead of a placeholder screen.
 - **`lib/projects.ts`**: added `fetchFields`, `addField`, `deleteField`, `fetchSampleCount`; extracted the field+category insert logic (previously inline in `createProject`'s loop) into a shared `insertFieldWithCategory` helper so both project creation and the Fields tab's "+ Add Field" use the same code path. Also extracted `DATA_TYPE_LABELS` as a shared exported constant (previously duplicated locally in `CreateProjectScreen`).
@@ -50,7 +73,7 @@ Builds out the "inside a project" navigation level described in `docs/architectu
 4. Guest → registered upgrade flow via Supabase identity linking (not yet built — current Log In/Sign Up/OAuth are separate accounts, not an upgrade path).
 5. Dependent category fields — let a category field derive its value from a `number` field via threshold/range rules (`field_category_rules`), auto-filled but overridable in Capture.
 5b. Fields tab / Add Field modal — add UI to mark a field `is_required` and to designate a project's (at most one) `is_sample_identifier` field, now that the columns exist.
-6. Real Capture tab — per-slot angle-assist where applicable → native manual-exposure camera capture, walking through all of a project's `capture_slots` → shared logging form once the sample is complete, enforcing `is_required` (block save) and `is_sample_identifier` (warn on duplicate) → immediate sync attempt on completion. Replaces the current `CaptureScreen` placeholder.
+6. ~~Real Capture tab~~ — skeleton done above (per-slot angle-assist → camera → shared logging form, enforcing `is_required`/`is_sample_identifier`); still owes: native manual-exposure camera capture (replacing the auto-exposure placeholder) and the immediate sync-on-completion trigger (depends on step 9).
 7. Camera calibration screen — locked ISO/shutter/white-balance/resolution, whenever Capture is first opened for a project.
 8. Real Data tab — table view (one row per sample, one photo column per slot) + CSV/zip export, including the export-time duplicate-identifier summary. Replaces the current `DataScreen` placeholder.
 9. Supabase sync — push/pull unsynced rows, photo upload to Storage, the periodic/foreground sweep that backstops the immediate sync-on-completion trigger (this is where the offline-first SQLite layer and the direct-to-Supabase code converge).

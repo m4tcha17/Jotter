@@ -32,12 +32,27 @@ export type NewFieldInput = {
   category?: CategoryRef;
 };
 
+export type CategoryOption = {
+  id: string;
+  label: string;
+  sort_order: number;
+};
+
 export type ProjectField = {
   id: string;
   name: string;
   data_type: FieldDataType;
   sort_order: number;
-  category: { name: string } | null;
+  is_required: boolean;
+  is_sample_identifier: boolean;
+  category: { id: string; name: string; options: CategoryOption[] } | null;
+};
+
+export type CaptureSlot = {
+  id: string;
+  label: string;
+  target_angle_degrees: number | null;
+  sort_order: number;
 };
 
 export const DATA_TYPE_LABELS: Record<FieldDataType, string> = {
@@ -169,11 +184,18 @@ export async function createProject(input: {
 export async function fetchFields(projectId: string): Promise<ProjectField[]> {
   const { data, error } = await supabase
     .from('fields')
-    .select('id, name, data_type, sort_order, category:categories(name)')
+    .select(
+      'id, name, data_type, sort_order, is_required, is_sample_identifier, ' +
+        'category:categories(id, name, category_options(id, label, sort_order))',
+    )
     .eq('project_id', projectId)
     .order('sort_order');
   if (error) throw error;
-  return (data ?? []) as unknown as ProjectField[];
+  const fields = (data ?? []) as unknown as ProjectField[];
+  for (const field of fields) {
+    field.category?.options.sort((a, b) => a.sort_order - b.sort_order);
+  }
+  return fields;
 }
 
 export async function addField(projectId: string, field: NewFieldInput): Promise<void> {
@@ -203,4 +225,69 @@ export async function fetchSampleCount(projectId: string): Promise<number> {
     .eq('project_id', projectId);
   if (error) throw error;
   return count ?? 0;
+}
+
+export async function fetchCaptureSlots(projectId: string): Promise<CaptureSlot[]> {
+  const { data, error } = await supabase
+    .from('capture_slots')
+    .select('id, label, target_angle_degrees, sort_order')
+    .eq('project_id', projectId)
+    .order('sort_order');
+  if (error) throw error;
+  return data ?? [];
+}
+
+// Non-blocking save-time check: does any other sample in this project already use this
+// value for the project's designated is_sample_identifier field?
+export async function checkIdentifierDuplicate(
+  projectId: string,
+  fieldId: string,
+  value: string,
+): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('sample_values')
+    .select('sample_id, samples!inner(project_id)')
+    .eq('field_id', fieldId)
+    .eq('value', value)
+    .eq('samples.project_id', projectId);
+  if (error) throw error;
+  return (data?.length ?? 0) > 0;
+}
+
+export type NewSamplePhoto = { captureSlotId: string; localUri: string };
+export type NewSampleValue = { fieldId: string; value: string };
+
+export async function createSample(
+  projectId: string,
+  photos: NewSamplePhoto[],
+  values: NewSampleValue[],
+): Promise<string> {
+  const { data: sample, error: sampleError } = await supabase
+    .from('samples')
+    .insert({ project_id: projectId })
+    .select('id')
+    .single();
+  if (sampleError) throw sampleError;
+
+  const sampleId: string = sample.id;
+
+  if (photos.length > 0) {
+    const { error: photosError } = await supabase.from('sample_photos').insert(
+      photos.map((photo) => ({
+        sample_id: sampleId,
+        capture_slot_id: photo.captureSlotId,
+        photo_local_uri: photo.localUri,
+      })),
+    );
+    if (photosError) throw photosError;
+  }
+
+  if (values.length > 0) {
+    const { error: valuesError } = await supabase
+      .from('sample_values')
+      .insert(values.map((v) => ({ sample_id: sampleId, field_id: v.fieldId, value: v.value })));
+    if (valuesError) throw valuesError;
+  }
+
+  return sampleId;
 }

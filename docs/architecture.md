@@ -43,7 +43,10 @@ screens/
 │   └── ProjectSettingsScreen.tsx
 ├── capture/                        # inner tab
 │   ├── CLAUDE.md
-│   └── CaptureScreen.tsx
+│   ├── CaptureScreen.tsx           # orchestrator/state machine
+│   ├── AngleAssistStep.tsx         # DeviceMotion tilt/level indicator
+│   ├── CameraCaptureStep.tsx       # interim capture UI (expo-camera, auto exposure)
+│   └── SampleForm.tsx              # per-sample logging form
 ├── fields/                         # inner tab
 │   ├── CLAUDE.md
 │   └── FieldsScreen.tsx
