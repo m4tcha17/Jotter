@@ -36,6 +36,12 @@
           "recordAudioAndroid": false
         }
       ],
+      [
+        "expo-sensors",
+        {
+          "motionPermission": "Jotter needs motion access to guide photo angle during capture."
+        }
+      ],
       "expo-web-browser",
       "@react-native-google-signin/google-signin",
       "expo-splash-screen"
