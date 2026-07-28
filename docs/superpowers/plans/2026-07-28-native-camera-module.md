@@ -225,7 +225,7 @@ git commit -m "feat(camera): add Kelvin-to-RGGB-gains white balance conversion"
 
 **Interfaces:**
 - Consumes: nothing from earlier tasks (WhiteBalance is only used starting Task 4).
-- Produces: `class CameraController(context: Context, previewView: PreviewView, scope: CoroutineScope)` with `fun start(lifecycleOwner: LifecycleOwner)`, `fun stop()`, and public vars `onCameraReady: (() -> Unit)?`, `onCapabilities: ((CameraCapabilities) -> Unit)?` — consumed by `JotterCameraView` in Task 5. Also defines `data class CameraCapabilities(isoRange: Range<Int>, exposureTimeRangeNs: Range<Long>, availableResolutions: List<Pair<Int, Int>>)` and `data class ManualExposureSettings(iso: Int, shutterSpeedNs: Long, whiteBalanceKelvin: Int)`, both consumed by Task 4 (same file, extended) and Task 5.
+- Produces: `class CameraController(context: Context, previewView: PreviewView, scope: CoroutineScope)` with `fun start(lifecycleOwner: LifecycleOwner)`, `fun stop()`, and public var `onCameraReady: (() -> Unit)?` — consumed by `JotterCameraView` in Task 5. Also defines `data class CameraCapabilities(isoRange: Range<Int>, exposureTimeRangeNs: Range<Long>, availableResolutions: List<Pair<Int, Int>>)` and `data class ManualExposureSettings(iso: Int, shutterSpeedNs: Long, whiteBalanceKelvin: Int)`, both consumed by Task 4 (same file, extended) and Task 5.
 
 - [ ] **Step 1: Add CameraX dependencies to the module's `build.gradle`**
 
@@ -287,7 +287,6 @@ class CameraController(
   private var manualExposure: ManualExposureSettings? = null
 
   var onCameraReady: (() -> Unit)? = null
-  var onCapabilities: ((CameraCapabilities) -> Unit)? = null
 
   fun start(lifecycleOwner: LifecycleOwner) {
     scope.launch {
@@ -331,7 +330,7 @@ class CameraController(
 }
 ```
 
-Note: `manualExposure` and `onCapabilities` are declared/stored here but not yet read — Task 4 wires them into `bind()`. This is intentional incremental scope, not a placeholder: `start()`/`stop()`/auto-mode preview binding is a complete, independently testable unit on its own (verified in Step 3 below).
+Note: `manualExposure` is declared/stored here but not yet read — Task 4 wires it into `bind()`. This is intentional incremental scope, not a placeholder: `start()`/`stop()`/auto-mode preview binding is a complete, independently testable unit on its own (verified in Step 3 below).
 
 - [ ] **Step 3: Verify the module compiles**
 
@@ -489,8 +488,8 @@ git commit -m "feat(camera): add capabilities query, manual-exposure rebind, and
 - Modify: `modules/jotter-camera/android/src/main/java/expo/modules/jottercamera/JotterCameraView.kt` (generator's starter version, from Task 1)
 
 **Interfaces:**
-- Consumes: `CameraController` (Task 3/4) — `start`, `stop`, `queryCapabilities`, `setManualExposure`, `takePicture`, `onCameraReady`, `onCapabilities`, `CameraCapabilities`, `ManualExposureSettings`.
-- Produces: `class JotterCameraView(context: Context, appContext: AppContext) : ExpoView` with public methods `getCapabilities(): Map<String, Any?>?`, `setManualExposure(iso: Int, shutterSpeedNs: Long, whiteBalanceKelvin: Int)`, `takePicture(onResult: (String) -> Unit, onError: (Exception) -> Unit)`, and public vars `onCameraReady: (() -> Unit)?`, `onCapabilities: ((Map<String, Any?>) -> Unit)?` — all consumed by `JotterCameraModule` in Task 6.
+- Consumes: `CameraController` (Task 3/4) — `start`, `stop`, `queryCapabilities`, `setManualExposure`, `takePicture`, `onCameraReady`, `CameraCapabilities`, `ManualExposureSettings`.
+- Produces: `class JotterCameraView(context: Context, appContext: AppContext) : ExpoView` with public methods `getCapabilities(): Map<String, Any?>?`, `setManualExposure(iso: Int, shutterSpeedNs: Long, whiteBalanceKelvin: Int)`, `takePicture(onResult: (String) -> Unit, onError: (Exception) -> Unit)`, and public var `onCameraReady: (() -> Unit)?` — all consumed by `JotterCameraModule` in Task 6.
 
 - [ ] **Step 1: Replace the file's full contents**
 
@@ -514,7 +513,6 @@ class JotterCameraView(context: Context, appContext: AppContext) : ExpoView(cont
   private var lifecycleOwner: LifecycleOwner? = null
 
   var onCameraReady: (() -> Unit)? = null
-  var onCapabilities: ((Map<String, Any?>) -> Unit)? = null
 
   init {
     addView(
@@ -555,7 +553,7 @@ private fun CameraCapabilities.toResultMap(): Map<String, Any?> = mapOf(
 )
 ```
 
-(`onCapabilities` on the view is retained for the module's `Events` declaration in Task 6 but is populated by `getCapabilities()`'s caller, not pushed automatically — see Task 6's note on why the event was simplified to an on-demand `AsyncFunction` only.)
+(No `onCapabilities` push-event on this view — see Task 6's note: capabilities are pull-only via `getCapabilities()`, so there's no separate event to wire here.)
 
 - [ ] **Step 2: Verify the module compiles**
 
