@@ -19,5 +19,6 @@ One directory per domain, matching the outer/inner navigation split in `docs/arc
 - `camera/` — the camera hardware wrapper (no screens of its own — a shared component, reused by `capture/` and `samples/`)
 - `samples/` — the per-sample logging form and sample data access
 - `data/` — the samples × fields grid (Data tab)
+- `jotter-camera/` — **not a domain module.** The local Expo native module (Kotlin, CameraX/Camera2Interop) for locked manual-exposure photo capture. Own `android/` source, own TS API, own `expo-module.config.json` — autolinked, not imported like the domain modules above. See `docs/superpowers/specs/2026-07-28-native-camera-module-design.md`.
 
 Each has its own `CLAUDE.md`. A screen belongs to exactly one module — don't reach across module boundaries except for a genuine, documented cross-module dependency (see each module's `CLAUDE.md`).
