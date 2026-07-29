@@ -16,6 +16,7 @@ export default function CameraCaptureStep({ label, cameraSettings, onCapture }: 
   const [ready, setReady] = useState(false);
   const [capturing, setCapturing] = useState(false);
   const [exposureError, setExposureError] = useState(false);
+  const [exposureConfirmed, setExposureConfirmed] = useState(false);
   const cameraRef = useRef<JotterCameraViewHandle>(null);
 
   if (!permission) {
@@ -45,17 +46,22 @@ export default function CameraCaptureStep({ label, cameraSettings, onCapture }: 
 
   async function handleCameraReady() {
     setReady(true);
-    if (!cameraSettings) return;
+    if (!cameraSettings) {
+      setExposureConfirmed(true);
+      return;
+    }
+    setExposureConfirmed(false);
     try {
       await cameraRef.current?.setManualExposure(cameraSettings);
       setExposureError(false);
+      setExposureConfirmed(true);
     } catch {
       setExposureError(true);
     }
   }
 
   async function handleShutter() {
-    if (!cameraRef.current || !ready || capturing || exposureError) return;
+    if (!cameraRef.current || !ready || !exposureConfirmed || capturing) return;
     setCapturing(true);
     try {
       const result = await cameraRef.current.takePicture();
@@ -93,7 +99,7 @@ export default function CameraCaptureStep({ label, cameraSettings, onCapture }: 
             accessibilityRole="button"
             accessibilityLabel={`Take photo — ${label}`}
             activeOpacity={0.85}
-            disabled={!ready || capturing}
+            disabled={!ready || !exposureConfirmed || capturing}
             onPress={handleShutter}
             className={`h-20 w-20 items-center justify-center rounded-full border-4 border-hairline-strong ${
               capturing ? 'bg-surface-elevated' : 'bg-primary'
