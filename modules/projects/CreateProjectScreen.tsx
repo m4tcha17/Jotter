@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import AddFieldModal from '../fields/AddFieldModal';
@@ -11,6 +11,8 @@ import type { CaptureSlotInput } from '../capture/api';
 import { createProject } from './api';
 import type { CaptureMode } from './api';
 import type { RootStackParamList } from '../../navigation/RootNavigator';
+import CameraCalibrationScreen from '../camera/CameraCalibrationScreen';
+import type { ManualExposureOptions } from 'jotter-camera';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CreateProject'>;
 
@@ -43,6 +45,9 @@ export default function CreateProjectScreen({ navigation }: Props) {
   const [slotAngleDraft, setSlotAngleDraft] = useState('');
   const [slotAngleFocused, setSlotAngleFocused] = useState(false);
 
+  const [cameraSettings, setCameraSettings] = useState<ManualExposureOptions | null>(null);
+  const [calibrationOpen, setCalibrationOpen] = useState(false);
+
   useEffect(() => {
     fetchGlobalCategories()
       .then(setExistingCategories)
@@ -74,10 +79,21 @@ export default function CreateProjectScreen({ navigation }: Props) {
       Alert.alert('Add capture slots', 'Multi Shot needs at least one photo position (e.g. Top, Side 1).');
       return;
     }
+    if (!cameraSettings) {
+      Alert.alert('Camera not calibrated', 'Calibrate the camera before creating this project.');
+      return;
+    }
 
     setSaving(true);
     try {
-      const projectId = await createProject({ name: name.trim(), color, fields, captureMode, captureSlots });
+      const projectId = await createProject({
+        name: name.trim(),
+        color,
+        fields,
+        captureMode,
+        captureSlots,
+        cameraSettings,
+      });
       Alert.alert('Project has been created', undefined, [
         { text: 'OK', onPress: () => navigation.replace('ProjectHome', { projectId, projectName: name.trim() }) },
       ]);
@@ -245,6 +261,24 @@ export default function CreateProjectScreen({ navigation }: Props) {
           </View>
         )}
 
+        <Text className="mt-8 font-inter-bold text-base text-body-strong">Camera</Text>
+        <Text className="mt-2 font-inter-light text-base text-body">
+          {cameraSettings
+            ? 'Camera calibrated ✓'
+            : 'Lock exposure so every photo in this project matches.'}
+        </Text>
+        <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel={cameraSettings ? 'Recalibrate camera' : 'Calibrate camera'}
+          activeOpacity={0.7}
+          onPress={() => setCalibrationOpen(true)}
+          className="mt-3 h-12 items-center justify-center border-2 border-hairline-strong px-6"
+        >
+          <Text className="font-inter-bold text-[13px] uppercase tracking-[1.2px] text-ink">
+            {cameraSettings ? 'Recalibrate' : 'Calibrate Camera'}
+          </Text>
+        </TouchableOpacity>
+
         <View className="mt-8 flex-row items-center justify-between">
           <Text className="font-inter-bold text-base text-body-strong">Fields</Text>
           <TouchableOpacity
@@ -317,6 +351,17 @@ export default function CreateProjectScreen({ navigation }: Props) {
         onClose={() => setModalVisible(false)}
         onAdd={(field) => setFields([...fields, field])}
       />
+
+      <Modal visible={calibrationOpen} animationType="slide" onRequestClose={() => setCalibrationOpen(false)}>
+        <CameraCalibrationScreen
+          initialSettings={cameraSettings}
+          onConfirm={(settings) => {
+            setCameraSettings(settings);
+            setCalibrationOpen(false);
+          }}
+          onCancel={() => setCalibrationOpen(false)}
+        />
+      </Modal>
     </SafeAreaView>
   );
 }
