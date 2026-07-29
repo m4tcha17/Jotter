@@ -98,6 +98,7 @@ export default function CameraCalibrationScreen({ initialSettings, onConfirm, on
         scheduleApply(next);
       },
       onSlidingComplete: (value: number) => {
+        if (debounceTimer.current) clearTimeout(debounceTimer.current);
         const next = { ...positions, [key]: value };
         setPositions(next);
         applyPositions(next);
@@ -147,6 +148,7 @@ export default function CameraCalibrationScreen({ initialSettings, onConfirm, on
 
           <Text className="font-inter-bold text-base text-body-strong">Brightness</Text>
           <Slider
+            accessibilityRole="adjustable"
             accessibilityLabel="Brightness"
             minimumValue={0}
             maximumValue={1}
@@ -158,6 +160,7 @@ export default function CameraCalibrationScreen({ initialSettings, onConfirm, on
 
           <Text className="mt-4 font-inter-bold text-base text-body-strong">Exposure Time</Text>
           <Slider
+            accessibilityRole="adjustable"
             accessibilityLabel="Exposure Time"
             minimumValue={0}
             maximumValue={1}
@@ -169,6 +172,7 @@ export default function CameraCalibrationScreen({ initialSettings, onConfirm, on
 
           <Text className="mt-4 font-inter-bold text-base text-body-strong">Color Warmth</Text>
           <Slider
+            accessibilityRole="adjustable"
             accessibilityLabel="Color Warmth"
             minimumValue={0}
             maximumValue={1}
