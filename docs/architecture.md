@@ -56,6 +56,10 @@ modules/
 ├── camera/                         # camera hardware wrapper (no screens of its own)
 │   ├── CLAUDE.md
 │   └── CameraCaptureStep.tsx       # interim capture UI (expo-camera, auto exposure) — used by capture/ and samples/
+├── jotter-camera/                  # NOT a domain module — local Expo native module (Kotlin/CameraX/Camera2Interop)
+│   ├── expo-module.config.json
+│   ├── android/                    # Kotlin: CameraController, JotterCameraView, JotterCameraModule, WhiteBalance
+│   └── src/                        # JotterCameraView.tsx, JotterCamera.types.ts
 ├── samples/                        # per-sample logging form + sample data access
 │   ├── CLAUDE.md
 │   ├── SampleForm.tsx
