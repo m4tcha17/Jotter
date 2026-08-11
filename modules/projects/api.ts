@@ -2,6 +2,7 @@ import { supabase } from '../../lib/supabase';
 import { insertFieldWithCategory } from '../fields/api';
 import type { NewFieldInput } from '../fields/api';
 import type { CaptureSlotInput } from '../capture/api';
+import type { ManualExposureOptions } from 'jotter-camera';
 
 export type CaptureMode = 'single' | 'multi';
 
@@ -32,6 +33,7 @@ export async function createProject(input: {
   fields: NewFieldInput[];
   captureMode: CaptureMode;
   captureSlots: CaptureSlotInput[];
+  cameraSettings: ManualExposureOptions;
 }): Promise<string> {
   const {
     data: { user },
@@ -40,7 +42,15 @@ export async function createProject(input: {
 
   const { data: project, error: projectError } = await supabase
     .from('projects')
-    .insert({ name: input.name, color: input.color, capture_mode: input.captureMode, owner_id: user.id })
+    .insert({
+      name: input.name,
+      color: input.color,
+      capture_mode: input.captureMode,
+      owner_id: user.id,
+      camera_iso: input.cameraSettings.iso,
+      camera_shutter_speed_ns: input.cameraSettings.shutterSpeedNs,
+      camera_white_balance: String(input.cameraSettings.whiteBalanceKelvin),
+    })
     .select('id')
     .single();
   if (projectError) throw projectError;
@@ -65,4 +75,33 @@ export async function createProject(input: {
   }
 
   return projectId;
+}
+
+export async function fetchProjectCameraSettings(projectId: string): Promise<ManualExposureOptions | null> {
+  const { data, error } = await supabase
+    .from('projects')
+    .select('camera_iso, camera_shutter_speed_ns, camera_white_balance')
+    .eq('id', projectId)
+    .single();
+  if (error) throw error;
+  if (data.camera_iso == null || data.camera_shutter_speed_ns == null || data.camera_white_balance == null) {
+    return null;
+  }
+  return {
+    iso: data.camera_iso,
+    shutterSpeedNs: data.camera_shutter_speed_ns,
+    whiteBalanceKelvin: Number(data.camera_white_balance),
+  };
+}
+
+export async function updateProjectCameraSettings(projectId: string, settings: ManualExposureOptions): Promise<void> {
+  const { error } = await supabase
+    .from('projects')
+    .update({
+      camera_iso: settings.iso,
+      camera_shutter_speed_ns: settings.shutterSpeedNs,
+      camera_white_balance: String(settings.whiteBalanceKelvin),
+    })
+    .eq('id', projectId);
+  if (error) throw error;
 }

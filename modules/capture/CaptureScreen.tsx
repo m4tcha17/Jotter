@@ -7,6 +7,8 @@ import { fetchCaptureSlots } from './api';
 import type { CaptureSlot } from './api';
 import { fetchFields } from '../fields/api';
 import type { ProjectField } from '../fields/api';
+import { fetchProjectCameraSettings } from '../projects/api';
+import type { ManualExposureOptions } from 'jotter-camera';
 import { createSample } from '../samples/api';
 import type { NewSamplePhoto, NewSampleValue } from '../samples/api';
 import type { ProjectTabParamList } from '../../navigation/ProjectTabs';
@@ -24,6 +26,7 @@ export default function CaptureScreen({ route }: Props) {
   const [slots, setSlots] = useState<CaptureSlot[] | null>(null);
   const [fields, setFields] = useState<ProjectField[] | null>(null);
   const [loadError, setLoadError] = useState(false);
+  const [cameraSettings, setCameraSettings] = useState<ManualExposureOptions | null>(null);
 
   const [slotIndex, setSlotIndex] = useState(0);
   const [step, setStep] = useState<Step>('camera');
@@ -31,10 +34,11 @@ export default function CaptureScreen({ route }: Props) {
 
   const load = useCallback(() => {
     setLoadError(false);
-    Promise.all([fetchCaptureSlots(projectId), fetchFields(projectId)])
-      .then(([loadedSlots, loadedFields]) => {
+    Promise.all([fetchCaptureSlots(projectId), fetchFields(projectId), fetchProjectCameraSettings(projectId)])
+      .then(([loadedSlots, loadedFields, loadedCameraSettings]) => {
         setSlots(loadedSlots);
         setFields(loadedFields);
+        setCameraSettings(loadedCameraSettings);
         setSlotIndex(0);
         setPhotos([]);
         setStep(loadedSlots[0]?.target_angle_degrees != null ? 'angle-assist' : 'camera');
@@ -116,14 +120,20 @@ export default function CaptureScreen({ route }: Props) {
     return (
       <SafeAreaView className="flex-1 bg-canvas" edges={['bottom']}>
         <CaptureHeader slotIndex={slotIndex} slotCount={slots.length} />
-        <CameraCaptureStep label={currentSlot.label} onCapture={handleAdvanceSlot} />
+        <CameraCaptureStep label={currentSlot.label} cameraSettings={cameraSettings} onCapture={handleAdvanceSlot} />
       </SafeAreaView>
     );
   }
 
   return (
     <SafeAreaView className="flex-1 bg-canvas" edges={['bottom']}>
-      <SampleForm projectId={projectId} fields={fields} saving={step === 'saving'} onSave={handleSaveSample} />
+      <SampleForm
+        projectId={projectId}
+        fields={fields}
+        cameraSettings={cameraSettings}
+        saving={step === 'saving'}
+        onSave={handleSaveSample}
+      />
     </SafeAreaView>
   );
 }
