@@ -1,8 +1,9 @@
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Image, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as Sharing from 'expo-sharing';
 
 import { fetchCaptureSlots } from '../capture/api';
 import type { CaptureSlot } from '../capture/api';
@@ -11,6 +12,7 @@ import type { ProjectField } from '../fields/api';
 import { fetchSamples } from '../samples/api';
 import type { SampleRow } from '../samples/api';
 import type { ProjectTabParamList } from '../../navigation/ProjectTabs';
+import { exportProjectData } from './export';
 
 type Props = BottomTabScreenProps<ProjectTabParamList, 'Data'>;
 
@@ -94,10 +96,11 @@ function DataCell({ column, sample }: { column: Column; sample: SampleRow }) {
 }
 
 export default function DataScreen({ route }: Props) {
-  const { projectId } = route.params;
+  const { projectId, projectName } = route.params;
   const [slots, setSlots] = useState<CaptureSlot[] | null>(null);
   const [fields, setFields] = useState<ProjectField[] | null>(null);
   const [samples, setSamples] = useState<SampleRow[] | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -114,6 +117,28 @@ export default function DataScreen({ route }: Props) {
         });
     }, [projectId]),
   );
+
+  async function handleExport() {
+    if (isExporting || samples === null || fields === null || slots === null) return;
+    setIsExporting(true);
+    try {
+      const result = await exportProjectData(projectName, fields, slots, samples);
+      if (result.duplicates.length > 0) {
+        Alert.alert(
+          'Duplicate sample IDs found',
+          `${result.duplicates.length} value(s) are used by more than one sample. A full list is included in the export as duplicate-ids.txt.`,
+        );
+      }
+      await Sharing.shareAsync(result.zipUri, {
+        mimeType: 'application/zip',
+        dialogTitle: 'Export project data',
+      });
+    } catch {
+      Alert.alert('Export failed', 'Could not build the export. Please try again.');
+    } finally {
+      setIsExporting(false);
+    }
+  }
 
   if (slots === null || fields === null || samples === null) {
     return (
@@ -140,6 +165,20 @@ export default function DataScreen({ route }: Props) {
     <SafeAreaView className="flex-1 bg-canvas">
       <View className="h-14 flex-row items-center justify-between border-b border-hairline px-6">
         <Text className="font-inter-bold text-[20px] text-ink">Data</Text>
+        <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel="Export project data as CSV and photos"
+          activeOpacity={0.85}
+          disabled={isExporting}
+          onPress={handleExport}
+          className="h-12 min-w-[96px] items-center justify-center rounded-none bg-primary px-4"
+        >
+          {isExporting ? (
+            <ActivityIndicator size="small" color="#0a0a0a" />
+          ) : (
+            <Text className="font-inter-bold text-[13px] uppercase tracking-[1.2px] text-primary-on">Export</Text>
+          )}
+        </TouchableOpacity>
       </View>
 
       <View className="flex-1 flex-row">
