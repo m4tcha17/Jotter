@@ -4,10 +4,13 @@ import android.content.Context
 import android.graphics.ImageFormat
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CaptureRequest
+import android.hardware.camera2.params.ColorSpaceTransform
 import android.util.Log
 import android.util.Range
+import android.util.Rational
+import androidx.camera.camera2.interop.Camera2CameraControl
 import androidx.camera.camera2.interop.Camera2CameraInfo
-import androidx.camera.camera2.interop.Camera2Interop
+import androidx.camera.camera2.interop.CaptureRequestOptions
 import androidx.camera.camera2.interop.ExperimentalCamera2Interop
 import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
@@ -45,7 +48,6 @@ class CameraController(
   private var cameraProvider: ProcessCameraProvider? = null
   internal var camera: Camera? = null
   internal var imageCapture: ImageCapture? = null
-  private var manualExposure: ManualExposureSettings? = null
 
   var onCameraReady: (() -> Unit)? = null
 
@@ -57,18 +59,14 @@ class CameraController(
     }
   }
 
-  @OptIn(ExperimentalCamera2Interop::class)
+  // Binds once per screen mount. Exposure changes go through setManualExposure() below, which
+  // pushes capture-request options onto the already-bound session — it must never call this
+  // again. A full unbind()+bindToLifecycle() per exposure change (e.g. every slider tick) is
+  // expensive and, on some devices, this Camera-Pipe session teardown/rebuild is unreliable
+  // enough to wedge the camera into ERROR_CAMERA_DISABLED.
   internal fun bind(provider: ProcessCameraProvider, lifecycleOwner: LifecycleOwner) {
-    val previewBuilder = Preview.Builder()
-    val captureBuilder = ImageCapture.Builder().setJpegQuality(92)
-
-    manualExposure?.let { settings ->
-      applyManualExposure(Camera2Interop.Extender(previewBuilder), settings)
-      applyManualExposure(Camera2Interop.Extender(captureBuilder), settings)
-    }
-
-    val preview = previewBuilder.build().also { it.surfaceProvider = previewView.surfaceProvider }
-    val capture = captureBuilder.build()
+    val preview = Preview.Builder().build().also { it.surfaceProvider = previewView.surfaceProvider }
+    val capture = ImageCapture.Builder().setJpegQuality(92).build()
     imageCapture = capture
 
     val selector = CameraSelector.Builder().requireLensFacing(CameraSelector.LENS_FACING_BACK).build()
@@ -88,22 +86,6 @@ class CameraController(
   }
 
   @OptIn(ExperimentalCamera2Interop::class)
-  private fun <T> applyManualExposure(extender: Camera2Interop.Extender<T>, settings: ManualExposureSettings) {
-    val gains = WhiteBalance.kelvinToRggbGains(settings.whiteBalanceKelvin)
-    extender
-      .setCaptureRequestOption(CaptureRequest.CONTROL_MODE, CaptureRequest.CONTROL_MODE_OFF)
-      .setCaptureRequestOption(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_OFF)
-      .setCaptureRequestOption(CaptureRequest.CONTROL_AWB_MODE, CaptureRequest.CONTROL_AWB_MODE_OFF)
-      .setCaptureRequestOption(CaptureRequest.SENSOR_SENSITIVITY, settings.iso)
-      .setCaptureRequestOption(CaptureRequest.SENSOR_EXPOSURE_TIME, settings.shutterSpeedNs)
-      .setCaptureRequestOption(CaptureRequest.COLOR_CORRECTION_MODE, CaptureRequest.COLOR_CORRECTION_MODE_TRANSFORM_MATRIX)
-      .setCaptureRequestOption(
-        CaptureRequest.COLOR_CORRECTION_GAINS,
-        android.hardware.camera2.params.RggbChannelVector(gains[0], gains[1], gains[2], gains[3])
-      )
-  }
-
-  @OptIn(ExperimentalCamera2Interop::class)
   fun queryCapabilities(): CameraCapabilities? {
     val cameraInfo = camera?.cameraInfo ?: return null
     val characteristics = Camera2CameraInfo.from(cameraInfo)
@@ -114,9 +96,33 @@ class CameraController(
     return CameraCapabilities(isoRange, exposureRange, resolutions)
   }
 
-  fun setManualExposure(settings: ManualExposureSettings, lifecycleOwner: LifecycleOwner) {
-    manualExposure = settings
-    cameraProvider?.let { bind(it, lifecycleOwner) }
+  @OptIn(ExperimentalCamera2Interop::class)
+  fun setManualExposure(settings: ManualExposureSettings) {
+    val cameraControl = camera?.cameraControl ?: return
+    val gains = WhiteBalance.kelvinToRggbGains(settings.whiteBalanceKelvin)
+    val options = CaptureRequestOptions.Builder()
+      .setCaptureRequestOption(CaptureRequest.CONTROL_MODE, CaptureRequest.CONTROL_MODE_OFF)
+      .setCaptureRequestOption(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_OFF)
+      .setCaptureRequestOption(CaptureRequest.CONTROL_AWB_MODE, CaptureRequest.CONTROL_AWB_MODE_OFF)
+      // CONTROL_MODE_OFF stops AF too, but leaves the lens wherever it last converged instead of
+      // locking it — GLCM/Canny feature extraction is blur-sensitive, so pin it to the rig's fixed
+      // capture distance instead of leaving that undefined.
+      .setCaptureRequestOption(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_OFF)
+      .setCaptureRequestOption(CaptureRequest.LENS_FOCUS_DISTANCE, FIXED_FOCUS_DISTANCE_DIOPTERS)
+      .setCaptureRequestOption(CaptureRequest.SENSOR_SENSITIVITY, settings.iso)
+      .setCaptureRequestOption(CaptureRequest.SENSOR_EXPOSURE_TIME, settings.shutterSpeedNs)
+      .setCaptureRequestOption(CaptureRequest.COLOR_CORRECTION_MODE, CaptureRequest.COLOR_CORRECTION_MODE_TRANSFORM_MATRIX)
+      .setCaptureRequestOption(
+        CaptureRequest.COLOR_CORRECTION_GAINS,
+        android.hardware.camera2.params.RggbChannelVector(gains[0], gains[1], gains[2], gains[3])
+      )
+      // TRANSFORM_MATRIX mode reads both GAINS and TRANSFORM together — leaving TRANSFORM unset
+      // lets it sit at whatever stale AWB value the HAL last computed, fighting the manual gains
+      // above and producing an unpredictable cast. Pin it to identity so gains are the only thing
+      // doing color work.
+      .setCaptureRequestOption(CaptureRequest.COLOR_CORRECTION_TRANSFORM, IDENTITY_COLOR_TRANSFORM)
+      .build()
+    Camera2CameraControl.from(cameraControl).setCaptureRequestOptions(options)
   }
 
   fun takePicture(onResult: (String) -> Unit, onError: (Exception) -> Unit) {
@@ -143,5 +149,17 @@ class CameraController(
 
   companion object {
     private const val TAG = "JotterCameraController"
+
+    // Diopters (1/meters). Copra capture rig holds the subject ~25cm from the lens — adjust if the
+    // rig's fixed camera-to-subject distance changes.
+    private const val FIXED_FOCUS_DISTANCE_DIOPTERS = 4.0f
+
+    private val IDENTITY_COLOR_TRANSFORM = ColorSpaceTransform(
+      arrayOf(
+        Rational(1, 1), Rational(0, 1), Rational(0, 1),
+        Rational(0, 1), Rational(1, 1), Rational(0, 1),
+        Rational(0, 1), Rational(0, 1), Rational(1, 1)
+      )
+    )
   }
 }

@@ -117,11 +117,14 @@ export default function CaptureScreen({ route }: Props) {
   }
 
   if (step === 'camera') {
+    // No SafeAreaView here — CameraCaptureStep already applies its own bottom inset, and
+    // double-nesting it (this screen's own SafeAreaView + its) can squeeze the native camera
+    // preview's laid-out height enough that CameraX gets zero surfaces to render into.
     return (
-      <SafeAreaView className="flex-1 bg-canvas" edges={['bottom']}>
+      <View className="flex-1 bg-canvas">
         <CaptureHeader slotIndex={slotIndex} slotCount={slots.length} />
         <CameraCaptureStep label={currentSlot.label} cameraSettings={cameraSettings} onCapture={handleAdvanceSlot} />
-      </SafeAreaView>
+      </View>
     );
   }
 

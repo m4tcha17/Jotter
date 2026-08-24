@@ -24,4 +24,10 @@ dependencies {
   implementation "androidx.camera:camera-camera2:${camerax_version}"
   implementation "androidx.camera:camera-lifecycle:${camerax_version}"
   implementation "androidx.camera:camera-view:${camerax_version}"
+  // Camera2CameraControl.setCaptureRequestOptions() returns a ListenableFuture. Something
+  // elsewhere in the app forces com.google.guava:listenablefuture to Google's empty stub
+  // (standard practice to avoid a duplicate-class clash with full Guava) — but nothing else
+  // on this module's classpath supplies the real class, so it needs full Guava declared
+  // directly for the type to resolve at compile time.
+  implementation "com.google.guava:guava:33.3.1-android"
 }

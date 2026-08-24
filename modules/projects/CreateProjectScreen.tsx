@@ -79,10 +79,6 @@ export default function CreateProjectScreen({ navigation }: Props) {
       Alert.alert('Add capture slots', 'Multi Shot needs at least one photo position (e.g. Top, Side 1).');
       return;
     }
-    if (!cameraSettings) {
-      Alert.alert('Camera not calibrated', 'Calibrate the camera before creating this project.');
-      return;
-    }
 
     setSaving(true);
     try {
@@ -265,7 +261,7 @@ export default function CreateProjectScreen({ navigation }: Props) {
         <Text className="mt-2 font-inter-light text-base text-body">
           {cameraSettings
             ? 'Camera calibrated ✓'
-            : 'Lock exposure so every photo in this project matches.'}
+            : 'Optional — lock exposure so every photo in this project matches. You can set this up later too.'}
         </Text>
         <TouchableOpacity
           accessibilityRole="button"

@@ -1,5 +1,17 @@
 # Current Task
 
+**Camera calibration screen + native-module wiring — merged into `camera` branch, awaiting on-device verification.**
+
+`sdd/camera-calibration-integration` (9 SDD tasks, all reviewed clean) merged into `camera` on 2026-08-11: `modules/camera/CameraCalibrationScreen.tsx` (live-preview slider UI for ISO/shutter/white-balance/resolution), `modules/camera/exposureMapping.ts` (log-scale slider↔device-value conversion, unit-tested), `CameraCaptureStep.tsx` rewritten to shoot through `JotterCameraView` with locked exposure (placeholder banner removed), calibration wired into `CreateProjectScreen.tsx` (mandatory at creation) and `ProjectSettingsScreen.tsx` (recalibration), settings persisted/read via `projects/api.ts`. `npx tsc --noEmit` clean, `npx jest` 13/13 passing post-merge.
+
+**Not yet done:** on-device verification — install to a physical device and confirm the calibration screen renders, sliders track real device capability ranges, and a capture actually uses the locked settings.
+
+**On-device verification found a real bug (2026-08-11), partially fixed:** `handleCameraReady` in both `CameraCalibrationScreen.tsx` and `CameraCaptureStep.tsx` called `setManualExposure` unconditionally, and applying manual exposure forces a native camera unbind+rebind (`CameraController.bind()`), which re-fires `onCameraReady` — an infinite rebind feedback loop. Fixed with a ref guard in both files so exposure is only applied once per genuine mount. `CameraCalibrationScreen.tsx` was also missing the `useCameraPermissions` gate that `CameraCaptureStep.tsx` already had (fixed too). Despite both fixes, calibration was still hanging on-device as of the last test — root cause not fully confirmed; may need further native-side investigation (possibly `ERROR_CAMERA_DISABLED` state left over from the rebind loop requiring a full device/app restart to clear, or a deeper issue).
+
+**Temporarily reverted to unblock testing:** camera calibration is no longer mandatory at project creation (`CreateProjectScreen.tsx`'s `handleCreate` no longer blocks on missing `cameraSettings`; `projects/api.ts`'s `createProject` now accepts `cameraSettings: ManualExposureOptions | null`). A project can be created with camera fields left `null` and calibrated later via Project Settings. **Re-enabling the mandatory-at-creation requirement is still the intended end state once the rebind bug is fully resolved and confirmed stable on-device** — don't treat this reversion as a design decision.
+
+---
+
 **Native camera module (locked manual exposure) — built and verified on-device.**
 
 Replaces `expo-camera`'s auto-exposure stock API with a new local Expo module, `modules/jotter-camera/` (Kotlin, CameraX + `Camera2Interop`), for locked ISO/shutter-speed/white-balance photo capture. Scoped per `docs/superpowers/specs/2026-07-28-native-camera-module-design.md`: the capture module only — no calibration screen, no `CaptureScreen.tsx`/`CameraCaptureStep.tsx` wiring, Android only.

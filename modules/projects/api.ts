@@ -33,7 +33,7 @@ export async function createProject(input: {
   fields: NewFieldInput[];
   captureMode: CaptureMode;
   captureSlots: CaptureSlotInput[];
-  cameraSettings: ManualExposureOptions;
+  cameraSettings: ManualExposureOptions | null;
 }): Promise<string> {
   const {
     data: { user },
@@ -47,9 +47,9 @@ export async function createProject(input: {
       color: input.color,
       capture_mode: input.captureMode,
       owner_id: user.id,
-      camera_iso: input.cameraSettings.iso,
-      camera_shutter_speed_ns: input.cameraSettings.shutterSpeedNs,
-      camera_white_balance: String(input.cameraSettings.whiteBalanceKelvin),
+      camera_iso: input.cameraSettings?.iso ?? null,
+      camera_shutter_speed_ns: input.cameraSettings?.shutterSpeedNs ?? null,
+      camera_white_balance: input.cameraSettings ? String(input.cameraSettings.whiteBalanceKelvin) : null,
     })
     .select('id')
     .single();

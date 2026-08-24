@@ -4,6 +4,7 @@ import { JotterCameraView } from 'jotter-camera';
 import type { JotterCameraViewHandle, ManualExposureOptions } from 'jotter-camera';
 import { useRef, useState } from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 type Props = {
   label: string;
@@ -18,6 +19,9 @@ export default function CameraCaptureStep({ label, cameraSettings, onCapture }: 
   const [exposureError, setExposureError] = useState(false);
   const [exposureConfirmed, setExposureConfirmed] = useState(false);
   const cameraRef = useRef<JotterCameraViewHandle>(null);
+  // setManualExposure rebinds the camera natively, which re-fires onCameraReady — this guards
+  // against re-applying exposure (and re-triggering another rebind) in a feedback loop.
+  const exposureAppliedRef = useRef(false);
 
   if (!permission) {
     return <View className="flex-1 bg-canvas" />;
@@ -25,7 +29,7 @@ export default function CameraCaptureStep({ label, cameraSettings, onCapture }: 
 
   if (!permission.granted) {
     return (
-      <View className="flex-1 items-center justify-center bg-canvas px-6">
+      <SafeAreaView edges={['bottom']} className="flex-1 items-center justify-center bg-canvas px-6">
         <Text className="text-center font-inter-bold text-base text-body-strong">
           Jotter needs camera access to capture photos.
         </Text>
@@ -40,7 +44,7 @@ export default function CameraCaptureStep({ label, cameraSettings, onCapture }: 
             Grant Permission
           </Text>
         </TouchableOpacity>
-      </View>
+      </SafeAreaView>
     );
   }
 
@@ -50,12 +54,15 @@ export default function CameraCaptureStep({ label, cameraSettings, onCapture }: 
       setExposureConfirmed(true);
       return;
     }
+    if (exposureAppliedRef.current) return;
+    exposureAppliedRef.current = true;
     setExposureConfirmed(false);
     try {
       await cameraRef.current?.setManualExposure(cameraSettings);
       setExposureError(false);
       setExposureConfirmed(true);
     } catch {
+      exposureAppliedRef.current = false;
       setExposureError(true);
     }
   }
@@ -72,7 +79,7 @@ export default function CameraCaptureStep({ label, cameraSettings, onCapture }: 
   }
 
   return (
-    <View className="flex-1 bg-canvas">
+    <SafeAreaView edges={['bottom']} className="flex-1 bg-canvas">
       <JotterCameraView ref={cameraRef} style={{ flex: 1 }} onCameraReady={handleCameraReady} />
 
       {exposureError && (
@@ -109,6 +116,6 @@ export default function CameraCaptureStep({ label, cameraSettings, onCapture }: 
           </TouchableOpacity>
         </View>
       )}
-    </View>
+    </SafeAreaView>
   );
 }

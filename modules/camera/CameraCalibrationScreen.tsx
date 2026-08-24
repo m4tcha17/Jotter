@@ -1,8 +1,10 @@
 import Slider from '@react-native-community/slider';
+import { useCameraPermissions } from 'expo-camera';
 import { JotterCameraView } from 'jotter-camera';
 import type { CameraCapabilities, JotterCameraViewHandle, ManualExposureOptions } from 'jotter-camera';
-import { useRef, useState } from 'react';
-import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Animated, Easing, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
   isoToSlider,
@@ -25,6 +27,11 @@ type SliderPositions = {
   whiteBalancePosition: number;
 };
 
+// Exposure-correct beats low-noise: a crushed-dark frame flattens GLCM contrast/entropy and
+// starves Canny of edges to find at all, which is worse for feature extraction than sensor noise.
+// These values assume ambient/handheld light, not a fixed lightbox (none built yet) — once one
+// exists, re-tune ISO down against its measured lux, since noise is the next thing that hurts
+// GLCM/Canny once exposure itself is solid.
 const DEFAULT_POSITIONS: SliderPositions = {
   isoPosition: 0.3,
   shutterPosition: 0.45,
@@ -33,9 +40,46 @@ const DEFAULT_POSITIONS: SliderPositions = {
 
 const DEBOUNCE_MS = 150;
 
+function CalibrationPanelSkeleton() {
+  const pulse = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, { toValue: 1, duration: 700, easing: Easing.out(Easing.ease), useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 0, duration: 700, easing: Easing.out(Easing.ease), useNativeDriver: true }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [pulse]);
+
+  const opacity = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.4, 0.85] });
+
+  return (
+    <View accessible accessibilityLabel="Loading camera calibration controls" className="border-t border-hairline px-6 py-4">
+      {[0, 1, 2].map((row) => (
+        <View key={row} className={row === 0 ? '' : 'mt-4'}>
+          <Animated.View style={{ opacity }} className="h-4 w-32 bg-surface-elevated" />
+          <Animated.View style={{ opacity }} className="mt-3 h-2 w-full bg-surface-elevated" />
+        </View>
+      ))}
+
+      <View className="mt-6 flex-row gap-3">
+        <Animated.View style={{ opacity }} className="h-[56px] flex-1 bg-surface-elevated" />
+        <Animated.View style={{ opacity }} className="h-[56px] flex-1 bg-surface-elevated" />
+      </View>
+    </View>
+  );
+}
+
 export default function CameraCalibrationScreen({ initialSettings, onConfirm, onCancel }: Props) {
+  const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef<JotterCameraViewHandle>(null);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // setManualExposure rebinds the camera natively, which re-fires onCameraReady — this guards
+  // against re-running initial setup (and re-triggering another rebind) in a feedback loop.
+  const initializedRef = useRef(false);
 
   const [capabilities, setCapabilities] = useState<CameraCapabilities | null>(null);
   const [loadError, setLoadError] = useState(false);
@@ -52,6 +96,8 @@ export default function CameraCalibrationScreen({ initialSettings, onConfirm, on
   }
 
   async function handleCameraReady() {
+    if (initializedRef.current) return;
+    initializedRef.current = true;
     setLoadError(false);
     try {
       const caps = await cameraRef.current?.getCapabilities();
@@ -68,6 +114,7 @@ export default function CameraCalibrationScreen({ initialSettings, onConfirm, on
       setPositions(startPositions);
       await cameraRef.current?.setManualExposure(settingsFromPositions(startPositions, caps));
     } catch {
+      initializedRef.current = false;
       setLoadError(true);
     }
   }
@@ -106,8 +153,42 @@ export default function CameraCalibrationScreen({ initialSettings, onConfirm, on
     };
   }
 
+  if (!permission) {
+    return <View className="flex-1 bg-canvas" />;
+  }
+
+  if (!permission.granted) {
+    return (
+      <SafeAreaView edges={['bottom']} className="flex-1 items-center justify-center bg-canvas px-6">
+        <Text className="text-center font-inter-bold text-base text-body-strong">
+          Jotter needs camera access to calibrate exposure.
+        </Text>
+        <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel="Grant camera permission"
+          activeOpacity={0.85}
+          onPress={requestPermission}
+          className="mt-6 h-[56px] w-full items-center justify-center bg-primary"
+        >
+          <Text className="font-inter-bold text-[13px] uppercase tracking-[1.2px] text-primary-on">
+            Grant Permission
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel="Cancel calibration"
+          activeOpacity={0.7}
+          onPress={onCancel}
+          className="mt-3 h-12 items-center justify-center px-6"
+        >
+          <Text className="font-inter-bold text-[13px] uppercase tracking-[1.2px] text-body">Cancel</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
+  }
+
   return (
-    <View className="flex-1 bg-canvas">
+    <SafeAreaView edges={['bottom']} className="flex-1 bg-canvas">
       <View className="border-b border-hairline px-6 py-3">
         <Text className="font-inter-bold text-[13px] uppercase tracking-[1.2px] text-body-strong">
           Calibrate Camera
@@ -136,11 +217,7 @@ export default function CameraCalibrationScreen({ initialSettings, onConfirm, on
         </View>
       )}
 
-      {!loadError && !capabilities && (
-        <View className="items-center py-6">
-          <ActivityIndicator size="large" color="#10b981" />
-        </View>
-      )}
+      {!loadError && !capabilities && <CalibrationPanelSkeleton />}
 
       {!loadError && capabilities && (
         <View className="border-t border-hairline px-6 py-4">
@@ -206,6 +283,6 @@ export default function CameraCalibrationScreen({ initialSettings, onConfirm, on
           </View>
         </View>
       )}
-    </View>
+    </SafeAreaView>
   );
 }
