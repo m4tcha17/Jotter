@@ -50,7 +50,7 @@ Replaces `expo-camera`'s auto-exposure stock API with a new local Expo module, `
 5b. Fields tab / Add Field modal `is_required`/`is_sample_identifier` toggles.
 6. Camera calibration screen + `CameraCaptureStep.tsx`/`CaptureScreen.tsx` wiring to the new native module — the two follow-on pieces of work this module's own spec named as out of scope.
 7. ~~Camera calibration screen~~ — folded into 6 above; kept as a separate spec/plan, not a separate build-order slot.
-8. ~~Real Data tab~~ — done; still owes CSV/zip export.
+8. ~~Real Data tab~~ / ~~CSV/zip export~~ — done.
 9. Supabase sync.
 10. Project sharing.
 
