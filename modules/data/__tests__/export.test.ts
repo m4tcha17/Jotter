@@ -75,16 +75,24 @@ describe('slugify', () => {
 
 describe('photoExportFilename', () => {
   it('returns null when there is no source URI', () => {
-    expect(photoExportFilename(1, 'Top', null)).toBeNull();
-    expect(photoExportFilename(1, 'Top', undefined)).toBeNull();
+    expect(photoExportFilename(1, 'Top', null, 's-top')).toBeNull();
+    expect(photoExportFilename(1, 'Top', undefined, 's-top')).toBeNull();
   });
 
   it('zero-pads the row number and slugifies the label, keeping the source extension', () => {
-    expect(photoExportFilename(7, 'Top', 'file:///cache/jotter-capture-123.jpg')).toBe('0007_top.jpg');
+    expect(photoExportFilename(7, 'Top', 'file:///cache/jotter-capture-123.jpg', 's-top')).toBe('0007_top-stop.jpg');
   });
 
   it('defaults to .jpg when the source URI has no extension', () => {
-    expect(photoExportFilename(1, 'Top', 'file:///cache/some-opaque-id')).toBe('0001_top.jpg');
+    expect(photoExportFilename(1, 'Top', 'file:///cache/some-opaque-id', 's-top')).toBe('0001_top-stop.jpg');
+  });
+
+  it('appends the last 6 alphanumeric characters of the column key so identical labels never collide', () => {
+    const slotFilename = photoExportFilename(1, 'Top', 'file:///cache/a.jpg', 's-top-001');
+    const fieldFilename = photoExportFilename(1, 'Top', 'file:///cache/b.jpg', 'f-top-002');
+    expect(slotFilename).not.toBe(fieldFilename);
+    expect(slotFilename).toBe('0001_top-top001.jpg');
+    expect(fieldFilename).toBe('0001_top-top002.jpg');
   });
 });
 
@@ -121,13 +129,34 @@ describe('buildCsvRow', () => {
   it('outputs a photos/<file> relative path for a photo-type field', () => {
     const sample = makeSample({ values: { [photoField.id]: 'file:///cache/jotter-capture-9.jpg' } });
     const row = buildCsvRow(sample, 3, [photoField], []);
-    expect(row).toEqual(['sample-1', 'photos/0003_closeup.jpg']);
+    expect(row).toEqual(['sample-1', 'photos/0003_closeup-fphoto.jpg']);
   });
 
   it('outputs a photos/<file> relative path for a capture slot column', () => {
     const sample = makeSample({ photos: { [slot.id]: { localUri: 'file:///cache/top.jpg', remoteUrl: null } } });
     const row = buildCsvRow(sample, 2, [], [slot]);
-    expect(row).toEqual(['sample-1', 'photos/0002_top.jpg']);
+    expect(row).toEqual(['sample-1', 'photos/0002_top-stop.jpg']);
+  });
+
+  it('gives a capture slot and a same-labeled photo field distinct filenames in the same row', () => {
+    const topPhotoField: ProjectField = {
+      id: 'f-top-photo',
+      name: 'Top',
+      data_type: 'photo',
+      sort_order: 0,
+      is_required: false,
+      is_sample_identifier: false,
+      category: null,
+    };
+    const sample = makeSample({
+      values: { [topPhotoField.id]: 'file:///cache/field-top.jpg' },
+      photos: { [slot.id]: { localUri: 'file:///cache/slot-top.jpg', remoteUrl: null } },
+    });
+    const row = buildCsvRow(sample, 1, [topPhotoField], [slot]);
+    const [, fieldCell, slotCell] = row;
+    expect(fieldCell).not.toBe(slotCell);
+    expect(fieldCell).toBe('photos/0001_top-pphoto.jpg');
+    expect(slotCell).toBe('photos/0001_top-stop.jpg');
   });
 });
 

@@ -18,12 +18,14 @@ export function photoExportFilename(
   rowNumber: number,
   label: string,
   sourceUri: string | null | undefined,
+  columnKey: string,
 ): string | null {
   if (!sourceUri) return null;
   const match = sourceUri.match(/\.([a-zA-Z0-9]+)(?:\?.*)?$/);
   const ext = match ? match[1].toLowerCase() : 'jpg';
   const paddedRow = String(rowNumber).padStart(4, '0');
-  return `${paddedRow}_${slugify(label)}.${ext}`;
+  const columnSuffix = columnKey.replace(/[^a-zA-Z0-9]/g, '').slice(-6);
+  return `${paddedRow}_${slugify(label)}-${columnSuffix}.${ext}`;
 }
 
 // Column order follows docs/architecture.md's Export section literally: id first, then one
@@ -44,7 +46,7 @@ export function buildCsvRow(
   const fieldCells = fields.map((field) => {
     if (field.data_type === 'timestamp') return sample.createdAt;
     if (field.data_type === 'photo') {
-      const filename = photoExportFilename(rowNumber, field.name, sample.values[field.id]);
+      const filename = photoExportFilename(rowNumber, field.name, sample.values[field.id], field.id);
       return filename ? `photos/${filename}` : '';
     }
     return sample.values[field.id] ?? '';
@@ -52,7 +54,7 @@ export function buildCsvRow(
 
   const slotCells = slots.map((slot) => {
     const photo = sample.photos[slot.id];
-    const filename = photoExportFilename(rowNumber, slot.label, photo?.localUri);
+    const filename = photoExportFilename(rowNumber, slot.label, photo?.localUri, slot.id);
     return filename ? `photos/${filename}` : '';
   });
 
@@ -107,8 +109,9 @@ async function copyPhotoIfPresent(
   photosDir: Directory,
   rowNumber: number,
   label: string,
+  columnKey: string,
 ): Promise<void> {
-  const filename = photoExportFilename(rowNumber, label, sourceUri);
+  const filename = photoExportFilename(rowNumber, label, sourceUri, columnKey);
   if (!filename || !sourceUri) return;
   const destination = new File(photosDir, filename);
   await new File(sourceUri).copy(destination);
@@ -124,36 +127,41 @@ export async function exportProjectData(
   const stagingDir = new Directory(Paths.cache, `export-${timestamp}`);
   stagingDir.create({ intermediates: true });
 
-  const photosDir = new Directory(stagingDir, 'photos');
-  photosDir.create({ intermediates: true });
+  try {
+    const photosDir = new Directory(stagingDir, 'photos');
+    photosDir.create({ intermediates: true });
 
-  const header = buildCsvHeader(fields, slots);
-  const rows = samples.map((sample, index) => buildCsvRow(sample, index + 1, fields, slots));
-  const csvFile = new File(stagingDir, 'data.csv');
-  await csvFile.write(toCsvText(header, rows));
+    const header = buildCsvHeader(fields, slots);
+    const rows = samples.map((sample, index) => buildCsvRow(sample, index + 1, fields, slots));
+    const csvFile = new File(stagingDir, 'data.csv');
+    await csvFile.write(toCsvText(header, rows));
 
-  for (let i = 0; i < samples.length; i++) {
-    const sample = samples[i];
-    const rowNumber = i + 1;
-    for (const slot of slots) {
-      await copyPhotoIfPresent(sample.photos[slot.id]?.localUri, photosDir, rowNumber, slot.label);
+    for (let i = 0; i < samples.length; i++) {
+      const sample = samples[i];
+      const rowNumber = i + 1;
+      for (const slot of slots) {
+        await copyPhotoIfPresent(sample.photos[slot.id]?.localUri, photosDir, rowNumber, slot.label, slot.id);
+      }
+      for (const field of fields) {
+        if (field.data_type !== 'photo') continue;
+        await copyPhotoIfPresent(sample.values[field.id], photosDir, rowNumber, field.name, field.id);
+      }
     }
-    for (const field of fields) {
-      if (field.data_type !== 'photo') continue;
-      await copyPhotoIfPresent(sample.values[field.id], photosDir, rowNumber, field.name);
+
+    const duplicates = findDuplicateIdentifierValues(fields, samples);
+    if (duplicates.length > 0) {
+      const summaryFile = new File(stagingDir, 'duplicate-ids.txt');
+      await summaryFile.write(formatDuplicateSummary(duplicates));
     }
+
+    const zipTarget = new File(Paths.cache, `${slugify(projectName)}-export-${timestamp}.zip`);
+    await zip(stagingDir.uri, zipTarget.uri);
+
+    stagingDir.delete();
+
+    return { zipUri: zipTarget.uri, duplicates };
+  } catch (err) {
+    if (stagingDir.exists) stagingDir.delete();
+    throw err;
   }
-
-  const duplicates = findDuplicateIdentifierValues(fields, samples);
-  if (duplicates.length > 0) {
-    const summaryFile = new File(stagingDir, 'duplicate-ids.txt');
-    await summaryFile.write(formatDuplicateSummary(duplicates));
-  }
-
-  const zipTarget = new File(Paths.cache, `${slugify(projectName)}-export-${timestamp}.zip`);
-  await zip(stagingDir.uri, zipTarget.uri);
-
-  stagingDir.delete();
-
-  return { zipUri: zipTarget.uri, duplicates };
 }

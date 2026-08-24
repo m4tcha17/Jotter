@@ -133,8 +133,8 @@ export default function DataScreen({ route }: Props) {
         mimeType: 'application/zip',
         dialogTitle: 'Export project data',
       });
-    } catch {
-      Alert.alert('Export failed', 'Could not build the export. Please try again.');
+    } catch (err) {
+      Alert.alert('Export failed', err instanceof Error ? err.message : 'Something went wrong.');
     } finally {
       setIsExporting(false);
     }
