@@ -113,8 +113,10 @@ async function copyPhotoIfPresent(
 ): Promise<void> {
   const filename = photoExportFilename(rowNumber, label, sourceUri, columnKey);
   if (!filename || !sourceUri) return;
+  const source = new File(sourceUri);
+  if (!source.exists) return;
   const destination = new File(photosDir, filename);
-  await new File(sourceUri).copy(destination);
+  await source.copy(destination);
 }
 
 export async function exportProjectData(

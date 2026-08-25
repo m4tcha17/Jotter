@@ -13,11 +13,6 @@ export default function SeedScreen({ onComplete }: Props) {
   const run = useCallback(async () => {
     setStatus('checking');
     try {
-      if (await hasSeeded()) {
-        onComplete();
-        return;
-      }
-      setStatus('seeding');
       const {
         data: { session },
       } = await supabase.auth.getSession();
@@ -25,8 +20,13 @@ export default function SeedScreen({ onComplete }: Props) {
         onComplete();
         return;
       }
+      if (await hasSeeded(session.user.id)) {
+        onComplete();
+        return;
+      }
+      setStatus('seeding');
       await seedFromSupabase(session.user.id);
-      await markSeeded();
+      await markSeeded(session.user.id);
       onComplete();
     } catch {
       setStatus('error');

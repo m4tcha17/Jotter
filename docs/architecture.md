@@ -36,7 +36,9 @@ modules/
 │   └── api.ts                      # signInWithGoogle, signInWithGithub, createSessionFromUrl
 ├── account/                        # account-level settings (not project-specific)
 │   ├── CLAUDE.md
-│   └── AccountScreen.tsx
+│   ├── AccountScreen.tsx
+│   ├── seed.ts                     # one-time first-launch pull of Supabase data into local SQLite
+│   └── SeedScreen.tsx
 ├── projects/                       # outer-level list/switcher + creation + settings
 │   ├── CLAUDE.md
 │   ├── ProjectsScreen.tsx
@@ -76,7 +78,8 @@ navigation/                         # composition root — wires modules/ togeth
 
 lib/                                # cross-cutting infra only
 ├── CLAUDE.md
-└── supabase.ts
+├── supabase.ts
+└── db.ts                           # local SQLite: getDb, getCurrentUserId, newId, nowIso
 
 docs/
 ├── CLAUDE.md

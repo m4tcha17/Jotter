@@ -14,8 +14,14 @@ export type Project = {
 };
 
 export async function fetchProjects(): Promise<Project[]> {
+  const userId = await getCurrentUserId();
+  if (!userId) return [];
+
   const db = await getDb();
-  return db.getAllAsync<Project>('SELECT id, name, color, created_at FROM projects ORDER BY created_at DESC');
+  return db.getAllAsync<Project>(
+    'SELECT id, name, color, created_at FROM projects WHERE owner_id = ? ORDER BY created_at DESC',
+    userId,
+  );
 }
 
 export async function deleteProject(projectId: string): Promise<void> {
