@@ -1,6 +1,7 @@
 # lib/
 
-`supabase.ts` — the Supabase client singleton plus offline-aware session helpers (`signOutLocally`, `flushPendingRevocations`). This is the only cross-cutting infra shared by every module; there is no other file here.
+`supabase.ts` — the Supabase client singleton plus offline-aware session helpers (`signOutLocally`, `flushPendingRevocations`). `db.ts` — the local SQLite connection singleton (`getDb`), schema migrations via `PRAGMA user_version`, and shared write-path helpers (`getCurrentUserId`, `newId`, `nowIso`). These two files are the only cross-cutting infra shared by every module.
 
 - All domain data access (projects, fields, capture slots, samples) lives in each `modules/<domain>/api.ts` instead — don't add a new domain function here. If it's about a specific domain concept, it belongs in that module, not `lib/`.
-- Offline-first (`expo-sqlite` as local source of truth, Supabase as best-effort sync) is the target architecture per `docs/architecture.md`, but is not yet implemented for most modules' `api.ts` files — they currently talk to Supabase directly. Flag this gap rather than silently building further on the online-only path; don't assume it's already offline-first.
+- `getCurrentUserId()` reads `supabase.auth.getSession()` (local cache) — never call `supabase.auth.getUser()` from a write path, it round-trips to the Auth server and breaks offline writes.
+- `expo-sqlite` has no Jest mock in this project — `db.ts` itself is not unit-testable; verify with `npx tsc --noEmit` plus on-device checks. Pure row-shaping helpers in each domain's `api.ts` are the unit-testable layer.
