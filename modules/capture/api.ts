@@ -1,4 +1,4 @@
-import { supabase } from '../../lib/supabase';
+import { getDb } from '../../lib/db';
 
 export type CaptureSlotInput = {
   label: string;
@@ -13,11 +13,9 @@ export type CaptureSlot = {
 };
 
 export async function fetchCaptureSlots(projectId: string): Promise<CaptureSlot[]> {
-  const { data, error } = await supabase
-    .from('capture_slots')
-    .select('id, label, target_angle_degrees, sort_order')
-    .eq('project_id', projectId)
-    .order('sort_order');
-  if (error) throw error;
-  return data ?? [];
+  const db = await getDb();
+  return db.getAllAsync<CaptureSlot>(
+    'SELECT id, label, target_angle_degrees, sort_order FROM capture_slots WHERE project_id = ? ORDER BY sort_order',
+    projectId,
+  );
 }
