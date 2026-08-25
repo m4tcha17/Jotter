@@ -11,16 +11,20 @@ import {
 import { NavigationContainer } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Linking, View } from 'react-native';
+import { ActivityIndicator, Linking, Text, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { getDb } from './lib/db';
 import { createSessionFromUrl } from './modules/auth/api';
 import { flushPendingRevocations, supabase } from './lib/supabase';
+import SeedScreen from './modules/account/SeedScreen';
 import { RootNavigator } from './navigation/RootNavigator';
 
 export default function App() {
   const [loading, setLoading] = useState(true);
   const [hasSession, setHasSession] = useState(false);
+  const [seeded, setSeeded] = useState(false);
+  const [dbError, setDbError] = useState<string | null>(null);
   const [fontsLoaded] = useFonts({
     Inter_300Light,
     Inter_400Regular,
@@ -36,6 +40,8 @@ export default function App() {
     });
 
     flushPendingRevocations().catch(() => {});
+
+    getDb().catch((err) => setDbError(err instanceof Error ? err.message : 'Something went wrong.'));
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       setHasSession(!!session);
@@ -58,6 +64,24 @@ export default function App() {
       <View className="flex-1 items-center justify-center bg-canvas">
         <ActivityIndicator size="large" color="#10b981" />
       </View>
+    );
+  }
+
+  if (dbError) {
+    return (
+      <View className="flex-1 items-center justify-center bg-canvas px-6">
+        <Text className="text-center font-inter-bold text-base text-destructive">Jotter could not start.</Text>
+        <Text className="mt-2 text-center font-inter-light text-sm text-body">{dbError}</Text>
+      </View>
+    );
+  }
+
+  if (hasSession && !seeded) {
+    return (
+      <SafeAreaProvider>
+        <SeedScreen onComplete={() => setSeeded(true)} />
+        <StatusBar style="light" />
+      </SafeAreaProvider>
     );
   }
 
