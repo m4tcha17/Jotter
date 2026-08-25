@@ -1,4 +1,4 @@
-import { supabase } from '../../lib/supabase';
+import { getCurrentUserId, getDb, newId, nowIso } from '../../lib/db';
 import { insertFieldWithCategory } from '../fields/api';
 import type { NewFieldInput } from '../fields/api';
 import type { CaptureSlotInput } from '../capture/api';
@@ -14,17 +14,13 @@ export type Project = {
 };
 
 export async function fetchProjects(): Promise<Project[]> {
-  const { data, error } = await supabase
-    .from('projects')
-    .select('id, name, color, created_at')
-    .order('created_at', { ascending: false });
-  if (error) throw error;
-  return data ?? [];
+  const db = await getDb();
+  return db.getAllAsync<Project>('SELECT id, name, color, created_at FROM projects ORDER BY created_at DESC');
 }
 
 export async function deleteProject(projectId: string): Promise<void> {
-  const { error } = await supabase.from('projects').delete().eq('id', projectId);
-  if (error) throw error;
+  const db = await getDb();
+  await db.runAsync('DELETE FROM projects WHERE id = ?', projectId);
 }
 
 export async function createProject(input: {
@@ -35,73 +31,74 @@ export async function createProject(input: {
   captureSlots: CaptureSlotInput[];
   cameraSettings: ManualExposureOptions | null;
 }): Promise<string> {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not signed in.');
+  const userId = await getCurrentUserId();
+  if (!userId) throw new Error('Not signed in.');
 
-  const { data: project, error: projectError } = await supabase
-    .from('projects')
-    .insert({
-      name: input.name,
-      color: input.color,
-      capture_mode: input.captureMode,
-      owner_id: user.id,
-      camera_iso: input.cameraSettings?.iso ?? null,
-      camera_shutter_speed_ns: input.cameraSettings?.shutterSpeedNs ?? null,
-      camera_white_balance: input.cameraSettings ? String(input.cameraSettings.whiteBalanceKelvin) : null,
-    })
-    .select('id')
-    .single();
-  if (projectError) throw projectError;
+  const db = await getDb();
+  const projectId = newId();
 
-  const projectId: string = project.id;
+  await db.withTransactionAsync(async () => {
+    await db.runAsync(
+      'INSERT INTO projects (id, owner_id, name, color, camera_iso, camera_shutter_speed_ns, camera_white_balance, capture_mode, created_at) ' +
+        'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      projectId,
+      userId,
+      input.name,
+      input.color,
+      input.cameraSettings?.iso ?? null,
+      input.cameraSettings?.shutterSpeedNs ?? null,
+      input.cameraSettings ? String(input.cameraSettings.whiteBalanceKelvin) : null,
+      input.captureMode,
+      nowIso(),
+    );
 
-  // Single-shot projects get one auto-created, hidden slot; multi-shot projects use
-  // whatever slots the researcher defined in the capture-plan builder.
-  const slots = input.captureMode === 'single' ? [{ label: 'Photo' }] : input.captureSlots;
-  const { error: slotsError } = await supabase.from('capture_slots').insert(
-    slots.map((slot, index) => ({
-      project_id: projectId,
-      label: slot.label,
-      target_angle_degrees: slot.targetAngleDegrees ?? null,
-      sort_order: index,
-    })),
-  );
-  if (slotsError) throw slotsError;
+    // Single-shot projects get one auto-created, hidden slot; multi-shot projects use
+    // whatever slots the researcher defined in the capture-plan builder.
+    const slots = input.captureMode === 'single' ? [{ label: 'Photo' }] : input.captureSlots;
+    for (let i = 0; i < slots.length; i++) {
+      await db.runAsync(
+        'INSERT INTO capture_slots (id, project_id, label, target_angle_degrees, sort_order) VALUES (?, ?, ?, ?, ?)',
+        newId(),
+        projectId,
+        slots[i].label,
+        slots[i].targetAngleDegrees ?? null,
+        i,
+      );
+    }
 
-  for (let i = 0; i < input.fields.length; i++) {
-    await insertFieldWithCategory(user.id, projectId, input.fields[i], i);
-  }
+    for (let i = 0; i < input.fields.length; i++) {
+      await insertFieldWithCategory(userId, projectId, input.fields[i], i);
+    }
+  });
 
   return projectId;
 }
 
 export async function fetchProjectCameraSettings(projectId: string): Promise<ManualExposureOptions | null> {
-  const { data, error } = await supabase
-    .from('projects')
-    .select('camera_iso, camera_shutter_speed_ns, camera_white_balance')
-    .eq('id', projectId)
-    .single();
-  if (error) throw error;
-  if (data.camera_iso == null || data.camera_shutter_speed_ns == null || data.camera_white_balance == null) {
+  const db = await getDb();
+  const row = await db.getFirstAsync<{
+    camera_iso: number | null;
+    camera_shutter_speed_ns: number | null;
+    camera_white_balance: string | null;
+  }>('SELECT camera_iso, camera_shutter_speed_ns, camera_white_balance FROM projects WHERE id = ?', projectId);
+
+  if (!row || row.camera_iso == null || row.camera_shutter_speed_ns == null || row.camera_white_balance == null) {
     return null;
   }
   return {
-    iso: data.camera_iso,
-    shutterSpeedNs: data.camera_shutter_speed_ns,
-    whiteBalanceKelvin: Number(data.camera_white_balance),
+    iso: row.camera_iso,
+    shutterSpeedNs: row.camera_shutter_speed_ns,
+    whiteBalanceKelvin: Number(row.camera_white_balance),
   };
 }
 
 export async function updateProjectCameraSettings(projectId: string, settings: ManualExposureOptions): Promise<void> {
-  const { error } = await supabase
-    .from('projects')
-    .update({
-      camera_iso: settings.iso,
-      camera_shutter_speed_ns: settings.shutterSpeedNs,
-      camera_white_balance: String(settings.whiteBalanceKelvin),
-    })
-    .eq('id', projectId);
-  if (error) throw error;
+  const db = await getDb();
+  await db.runAsync(
+    'UPDATE projects SET camera_iso = ?, camera_shutter_speed_ns = ?, camera_white_balance = ? WHERE id = ?',
+    settings.iso,
+    settings.shutterSpeedNs,
+    String(settings.whiteBalanceKelvin),
+    projectId,
+  );
 }
