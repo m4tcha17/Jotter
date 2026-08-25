@@ -1,4 +1,9 @@
-jest.mock('../../../lib/db');
+jest.mock('../../../lib/db', () => ({
+  getCurrentUserId: jest.fn(),
+  getDb: jest.fn(),
+  newId: jest.fn(),
+  nowIso: jest.fn(),
+}));
 
 import { assembleFields } from '../api';
 
