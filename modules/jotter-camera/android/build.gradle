@@ -1,0 +1,33 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'expo.modules.jottercamera'
+version = '0.1.0'
+
+android {
+  namespace "expo.modules.jottercamera"
+  defaultConfig {
+    versionCode 1
+    versionName "0.1.0"
+  }
+  lintOptions {
+    abortOnError false
+  }
+}
+
+dependencies {
+  def camerax_version = "1.6.0"
+
+  implementation "androidx.camera:camera-core:${camerax_version}"
+  implementation "androidx.camera:camera-camera2:${camerax_version}"
+  implementation "androidx.camera:camera-lifecycle:${camerax_version}"
+  implementation "androidx.camera:camera-view:${camerax_version}"
+  // Camera2CameraControl.setCaptureRequestOptions() returns a ListenableFuture. Something
+  // elsewhere in the app forces com.google.guava:listenablefuture to Google's empty stub
+  // (standard practice to avoid a duplicate-class clash with full Guava) — but nothing else
+  // on this module's classpath supplies the real class, so it needs full Guava declared
+  // directly for the type to resolve at compile time.
+  implementation "com.google.guava:guava:33.3.1-android"
+}

@@ -1,20 +1,27 @@
 import { Ionicons } from '@expo/vector-icons';
-import { CameraView, useCameraPermissions } from 'expo-camera';
+import { useCameraPermissions } from 'expo-camera';
+import { JotterCameraView } from 'jotter-camera';
+import type { JotterCameraViewHandle, ManualExposureOptions } from 'jotter-camera';
 import { useRef, useState } from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 type Props = {
   label: string;
+  cameraSettings: ManualExposureOptions | null;
   onCapture: (localUri: string) => void;
 };
 
-// Interim placeholder: expo-camera's stock API has no locked ISO/shutter/white-balance
-// controls. This runs on auto exposure until the custom Camera2Interop native module ships.
-export default function CameraCaptureStep({ label, onCapture }: Props) {
+export default function CameraCaptureStep({ label, cameraSettings, onCapture }: Props) {
   const [permission, requestPermission] = useCameraPermissions();
   const [ready, setReady] = useState(false);
   const [capturing, setCapturing] = useState(false);
-  const cameraRef = useRef<CameraView>(null);
+  const [exposureError, setExposureError] = useState(false);
+  const [exposureConfirmed, setExposureConfirmed] = useState(false);
+  const cameraRef = useRef<JotterCameraViewHandle>(null);
+  // setManualExposure rebinds the camera natively, which re-fires onCameraReady — this guards
+  // against re-applying exposure (and re-triggering another rebind) in a feedback loop.
+  const exposureAppliedRef = useRef(false);
 
   if (!permission) {
     return <View className="flex-1 bg-canvas" />;
@@ -22,7 +29,7 @@ export default function CameraCaptureStep({ label, onCapture }: Props) {
 
   if (!permission.granted) {
     return (
-      <View className="flex-1 items-center justify-center bg-canvas px-6">
+      <SafeAreaView edges={['bottom']} className="flex-1 items-center justify-center bg-canvas px-6">
         <Text className="text-center font-inter-bold text-base text-body-strong">
           Jotter needs camera access to capture photos.
         </Text>
@@ -37,49 +44,78 @@ export default function CameraCaptureStep({ label, onCapture }: Props) {
             Grant Permission
           </Text>
         </TouchableOpacity>
-      </View>
+      </SafeAreaView>
     );
   }
 
+  async function handleCameraReady() {
+    setReady(true);
+    if (!cameraSettings) {
+      setExposureConfirmed(true);
+      return;
+    }
+    if (exposureAppliedRef.current) return;
+    exposureAppliedRef.current = true;
+    setExposureConfirmed(false);
+    try {
+      await cameraRef.current?.setManualExposure(cameraSettings);
+      setExposureError(false);
+      setExposureConfirmed(true);
+    } catch {
+      exposureAppliedRef.current = false;
+      setExposureError(true);
+    }
+  }
+
   async function handleShutter() {
-    if (!cameraRef.current || !ready || capturing) return;
+    if (!cameraRef.current || !ready || !exposureConfirmed || capturing) return;
     setCapturing(true);
     try {
-      const photo = await cameraRef.current.takePictureAsync({ quality: 0.92 });
-      if (photo?.uri) onCapture(photo.uri);
+      const result = await cameraRef.current.takePicture();
+      onCapture(result.uri);
     } finally {
       setCapturing(false);
     }
   }
 
   return (
-    <View className="flex-1 bg-canvas">
-      <View className="border-b border-hairline px-6 py-3">
-        <Text className="font-inter-bold text-[13px] uppercase tracking-[1.2px] text-calibration-amber">
-          Auto exposure — placeholder
-        </Text>
-        <Text className="mt-1 font-inter-light text-sm text-body">
-          Locked manual exposure ships with the native camera module.
-        </Text>
-      </View>
+    <SafeAreaView edges={['bottom']} className="flex-1 bg-canvas">
+      <JotterCameraView ref={cameraRef} style={{ flex: 1 }} onCameraReady={handleCameraReady} />
 
-      <CameraView ref={cameraRef} style={{ flex: 1 }} facing="back" onCameraReady={() => setReady(true)} />
+      {exposureError && (
+        <View className="items-center border-t border-hairline px-6 py-4">
+          <Text className="text-center font-inter-bold text-base text-destructive">
+            Could not lock camera settings for this project.
+          </Text>
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel="Retry applying camera settings"
+            activeOpacity={0.85}
+            onPress={handleCameraReady}
+            className="mt-3 h-12 items-center justify-center border-2 border-hairline-strong px-6"
+          >
+            <Text className="font-inter-bold text-[13px] uppercase tracking-[1.2px] text-ink">Retry</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
-      <View className="items-center border-t border-hairline px-6 py-6">
-        <Text className="mb-4 font-inter-bold text-base text-body-strong">{label}</Text>
-        <TouchableOpacity
-          accessibilityRole="button"
-          accessibilityLabel={`Take photo — ${label}`}
-          activeOpacity={0.85}
-          disabled={!ready || capturing}
-          onPress={handleShutter}
-          className={`h-20 w-20 items-center justify-center rounded-full border-4 border-hairline-strong ${
-            capturing ? 'bg-surface-elevated' : 'bg-primary'
-          }`}
-        >
-          <Ionicons name="camera" size={28} color={capturing ? '#7a7a7a' : '#03140d'} />
-        </TouchableOpacity>
-      </View>
-    </View>
+      {!exposureError && (
+        <View className="items-center border-t border-hairline px-6 py-6">
+          <Text className="mb-4 font-inter-bold text-base text-body-strong">{label}</Text>
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel={`Take photo — ${label}`}
+            activeOpacity={0.85}
+            disabled={!ready || !exposureConfirmed || capturing}
+            onPress={handleShutter}
+            className={`h-20 w-20 items-center justify-center rounded-full border-4 border-hairline-strong ${
+              capturing ? 'bg-surface-elevated' : 'bg-primary'
+            }`}
+          >
+            <Ionicons name="camera" size={28} color={capturing ? '#7a7a7a' : '#03140d'} />
+          </TouchableOpacity>
+        </View>
+      )}
+    </SafeAreaView>
   );
 }
