@@ -1,10 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useCameraPermissions } from 'expo-camera';
+import { File, Paths } from 'expo-file-system';
 import { JotterCameraView } from 'jotter-camera';
 import type { JotterCameraViewHandle, ManualExposureOptions } from 'jotter-camera';
 import { useRef, useState } from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { newId } from '../../lib/db';
 
 type Props = {
   label: string;
@@ -72,7 +74,9 @@ export default function CameraCaptureStep({ label, cameraSettings, onCapture }: 
     setCapturing(true);
     try {
       const result = await cameraRef.current.takePicture();
-      onCapture(result.uri);
+      const destination = new File(Paths.document, `${newId()}.jpg`);
+      await new File(result.uri).copy(destination);
+      onCapture(destination.uri);
     } finally {
       setCapturing(false);
     }
