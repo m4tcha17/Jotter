@@ -1,51 +1,35 @@
 package expo.modules.jottercamera
 
-import kotlin.math.ln
-import kotlin.math.max
-import kotlin.math.min
+import android.hardware.camera2.CaptureRequest
 
-/**
- * Approximate correlated-color-temperature -> RGB -> COLOR_CORRECTION_GAINS conversion.
- * Uses the Tanner Helland algorithm (public domain) for Kelvin -> RGB, then derives
- * per-channel gains as the inverse of each channel's relative strength so that a
- * warm (low-K) light gets its red channel pulled down / blue pulled up, and vice
- * versa for a cool (high-K) light. Clamped to [1.0, 4.0], a conservative range
- * that covers typical device-reported COLOR_CORRECTION_GAINS maximums; Camera2
- * does not expose a queryable legal range for this key the way it does for ISO
- * or exposure time.
- */
+// Maps a user-facing preset name to the Camera2 CONTROL_AWB_MODE constant that drives the
+// device's own AWB algorithm for that lighting condition. This is the same color pipeline a
+// stock camera app uses for that preset — captured photos need no separate app-computed color
+// correction, which matters here since these photos feed a model trained on ordinary-camera
+// images. CONTROL_AWB_MODE_OFF/AUTO are deliberately excluded: OFF disables AWB's own color
+// science entirely, and AUTO isn't a fixed, repeatable setting across a capture session.
 object WhiteBalance {
-  private const val MIN_GAIN = 1.0f
-  private const val MAX_GAIN = 4.0f
+  private val PRESETS: Map<String, Int> = mapOf(
+    "incandescent" to CaptureRequest.CONTROL_AWB_MODE_INCANDESCENT,
+    "warm_fluorescent" to CaptureRequest.CONTROL_AWB_MODE_WARM_FLUORESCENT,
+    "fluorescent" to CaptureRequest.CONTROL_AWB_MODE_FLUORESCENT,
+    "daylight" to CaptureRequest.CONTROL_AWB_MODE_DAYLIGHT,
+    "cloudy_daylight" to CaptureRequest.CONTROL_AWB_MODE_CLOUDY_DAYLIGHT,
+    "twilight" to CaptureRequest.CONTROL_AWB_MODE_TWILIGHT,
+    "shade" to CaptureRequest.CONTROL_AWB_MODE_SHADE,
+  )
 
-  fun kelvinToRggbGains(kelvin: Int): FloatArray {
-    val temp = kelvin.coerceIn(1000, 40000) / 100.0
+  fun awbModeFor(preset: String): Int =
+    PRESETS[preset] ?: throw IllegalArgumentException("Unknown white balance preset: $preset")
 
-    val red = if (temp <= 66.0) {
-      255.0
-    } else {
-      (329.698727446 * Math.pow(temp - 60.0, -0.1332047592)).coerceIn(0.0, 255.0)
-    }
-
-    val green = if (temp <= 66.0) {
-      (99.4708025861 * ln(temp) - 161.1195681661).coerceIn(0.0, 255.0)
-    } else {
-      (288.1221695283 * Math.pow(temp - 60.0, -0.0755148492)).coerceIn(0.0, 255.0)
-    }
-
-    val blue = when {
-      temp >= 66.0 -> 255.0
-      temp <= 19.0 -> 0.0
-      else -> (138.5177312231 * ln(temp - 10.0) - 305.0447927307).coerceIn(0.0, 255.0)
-    }
-
-    val rGain = clampGain(if (red > 0.0) green / red else MAX_GAIN.toDouble())
-    val bGain = clampGain(if (blue > 0.0) green / blue else MAX_GAIN.toDouble())
-
-    // RggbChannelVector order: red, green (even row), green (odd row), blue.
-    return floatArrayOf(rGain, 1.0f, 1.0f, bGain)
+  // CONTROL_AWB_AVAILABLE_MODES is advisory, not a hard gate: some devices under-report it (omit
+  // these long-standing fixed presets even though the HAL honors them fine when requested), and
+  // Camera2 doesn't reject a capture request for asking anyway. Prefer the device's real list when
+  // it actually names any of our presets; otherwise assume they all work rather than leaving the
+  // picker empty.
+  fun availablePresets(supportedModes: IntArray): List<String> {
+    val supported = supportedModes.toSet()
+    val matched = PRESETS.filterValues { it in supported }.keys.toList()
+    return matched.ifEmpty { PRESETS.keys.toList() }
   }
-
-  private fun clampGain(value: Double): Float =
-    max(MIN_GAIN.toDouble(), min(MAX_GAIN.toDouble(), value)).toFloat()
 }

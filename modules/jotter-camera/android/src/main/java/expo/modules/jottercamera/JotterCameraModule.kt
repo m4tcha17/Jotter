@@ -23,8 +23,8 @@ class JotterCameraModule : Module() {
 
       AsyncFunction(
         "setManualExposure"
-      ) { view: JotterCameraView, iso: Int, shutterSpeedNs: Long, whiteBalanceKelvin: Int, promise: Promise ->
-        view.setManualExposure(iso, shutterSpeedNs, whiteBalanceKelvin)
+      ) { view: JotterCameraView, iso: Int, shutterSpeedNs: Long, whiteBalancePreset: String, promise: Promise ->
+        view.setManualExposure(iso, shutterSpeedNs, whiteBalancePreset)
         promise.resolve(null)
       }
 

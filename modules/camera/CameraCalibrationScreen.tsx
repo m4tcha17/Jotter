@@ -1,19 +1,12 @@
 import Slider from '@react-native-community/slider';
 import { useCameraPermissions } from 'expo-camera';
 import { JotterCameraView } from 'jotter-camera';
-import type { CameraCapabilities, JotterCameraViewHandle, ManualExposureOptions } from 'jotter-camera';
+import type { CameraCapabilities, JotterCameraViewHandle, ManualExposureOptions, WhiteBalancePreset } from 'jotter-camera';
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import {
-  isoToSlider,
-  shutterSpeedNsToSlider,
-  sliderToIso,
-  sliderToShutterSpeedNs,
-  sliderToWhiteBalanceKelvin,
-  whiteBalanceKelvinToSlider,
-} from './exposureMapping';
+import { isoToSlider, shutterSpeedNsToSlider, sliderToIso, sliderToShutterSpeedNs } from './exposureMapping';
 
 type Props = {
   initialSettings?: ManualExposureOptions | null;
@@ -24,7 +17,6 @@ type Props = {
 type SliderPositions = {
   isoPosition: number;
   shutterPosition: number;
-  whiteBalancePosition: number;
 };
 
 // Exposure-correct beats low-noise: a crushed-dark frame flattens GLCM contrast/entropy and
@@ -35,8 +27,21 @@ type SliderPositions = {
 const DEFAULT_POSITIONS: SliderPositions = {
   isoPosition: 0.3,
   shutterPosition: 0.45,
-  whiteBalancePosition: 0.44, // ~5500K within the fixed 2000-10000K range
 };
+
+// Ordered warm-to-cool, matching how the old Kelvin slider ran — daylight is a reasonable
+// ambient/handheld default until a fixed lightbox exists to calibrate against.
+const WHITE_BALANCE_PRESETS: { value: WhiteBalancePreset; label: string }[] = [
+  { value: 'incandescent', label: 'Incandescent' },
+  { value: 'warm_fluorescent', label: 'Warm Fluorescent' },
+  { value: 'fluorescent', label: 'Fluorescent' },
+  { value: 'daylight', label: 'Daylight' },
+  { value: 'cloudy_daylight', label: 'Cloudy' },
+  { value: 'twilight', label: 'Twilight' },
+  { value: 'shade', label: 'Shade' },
+];
+
+const DEFAULT_WHITE_BALANCE_PRESET: WhiteBalancePreset = 'daylight';
 
 const DEBOUNCE_MS = 150;
 
@@ -86,12 +91,17 @@ export default function CameraCalibrationScreen({ initialSettings, onConfirm, on
   const [applyError, setApplyError] = useState<string | null>(null);
 
   const [positions, setPositions] = useState<SliderPositions>(DEFAULT_POSITIONS);
+  const [whiteBalancePreset, setWhiteBalancePreset] = useState<WhiteBalancePreset>(DEFAULT_WHITE_BALANCE_PRESET);
 
-  function settingsFromPositions(next: SliderPositions, caps: CameraCapabilities): ManualExposureOptions {
+  function settingsFromState(
+    next: SliderPositions,
+    preset: WhiteBalancePreset,
+    caps: CameraCapabilities,
+  ): ManualExposureOptions {
     return {
       iso: sliderToIso(next.isoPosition, caps.isoRange),
       shutterSpeedNs: sliderToShutterSpeedNs(next.shutterPosition, caps.exposureTimeRangeNs),
-      whiteBalanceKelvin: sliderToWhiteBalanceKelvin(next.whiteBalancePosition),
+      whiteBalancePreset: preset,
     };
   }
 
@@ -100,41 +110,56 @@ export default function CameraCalibrationScreen({ initialSettings, onConfirm, on
     initializedRef.current = true;
     setLoadError(false);
     try {
-      const caps = await cameraRef.current?.getCapabilities();
-      if (!caps) throw new Error('Camera not ready');
+      const rawCaps = await cameraRef.current?.getCapabilities();
+      if (!rawCaps) throw new Error('Camera not ready');
+      // Bridge boundary: native may be a build behind (Kotlin changes need a full rebuild, not
+      // just a JS reload) or the device may legitimately report no matching AWB presets — either
+      // way, default to an empty list rather than let a missing field crash calibration.
+      const caps: CameraCapabilities = {
+        ...rawCaps,
+        availableWhiteBalancePresets: rawCaps.availableWhiteBalancePresets ?? [],
+      };
       setCapabilities(caps);
 
       const startPositions: SliderPositions = initialSettings
         ? {
             isoPosition: isoToSlider(initialSettings.iso, caps.isoRange),
             shutterPosition: shutterSpeedNsToSlider(initialSettings.shutterSpeedNs, caps.exposureTimeRangeNs),
-            whiteBalancePosition: whiteBalanceKelvinToSlider(initialSettings.whiteBalanceKelvin),
           }
         : DEFAULT_POSITIONS;
+      // A stored preset from a previous device might not be in this device's supported list —
+      // fall back to the default, or the first supported preset if even that isn't available.
+      const startPreset: WhiteBalancePreset =
+        initialSettings && caps.availableWhiteBalancePresets.includes(initialSettings.whiteBalancePreset)
+          ? initialSettings.whiteBalancePreset
+          : caps.availableWhiteBalancePresets.includes(DEFAULT_WHITE_BALANCE_PRESET)
+            ? DEFAULT_WHITE_BALANCE_PRESET
+            : (caps.availableWhiteBalancePresets[0] ?? DEFAULT_WHITE_BALANCE_PRESET);
       setPositions(startPositions);
-      await cameraRef.current?.setManualExposure(settingsFromPositions(startPositions, caps));
+      setWhiteBalancePreset(startPreset);
+      await cameraRef.current?.setManualExposure(settingsFromState(startPositions, startPreset, caps));
     } catch {
       initializedRef.current = false;
       setLoadError(true);
     }
   }
 
-  function applyPositions(next: SliderPositions) {
+  function applySettings(nextPositions: SliderPositions, nextPreset: WhiteBalancePreset) {
     if (!capabilities) return;
     cameraRef.current
-      ?.setManualExposure(settingsFromPositions(next, capabilities))
+      ?.setManualExposure(settingsFromState(nextPositions, nextPreset, capabilities))
       .then(() => setApplyError(null))
       .catch(() => setApplyError('Could not apply that setting.'));
   }
 
-  function scheduleApply(next: SliderPositions) {
+  function scheduleApply(nextPositions: SliderPositions, nextPreset: WhiteBalancePreset) {
     if (debounceTimer.current) clearTimeout(debounceTimer.current);
-    debounceTimer.current = setTimeout(() => applyPositions(next), DEBOUNCE_MS);
+    debounceTimer.current = setTimeout(() => applySettings(nextPositions, nextPreset), DEBOUNCE_MS);
   }
 
   function handleConfirm() {
     if (!capabilities) return;
-    onConfirm(settingsFromPositions(positions, capabilities));
+    onConfirm(settingsFromState(positions, whiteBalancePreset, capabilities));
   }
 
   function makeSliderHandlers(key: keyof SliderPositions) {
@@ -142,15 +167,21 @@ export default function CameraCalibrationScreen({ initialSettings, onConfirm, on
       onValueChange: (value: number) => {
         const next = { ...positions, [key]: value };
         setPositions(next);
-        scheduleApply(next);
+        scheduleApply(next, whiteBalancePreset);
       },
       onSlidingComplete: (value: number) => {
         if (debounceTimer.current) clearTimeout(debounceTimer.current);
         const next = { ...positions, [key]: value };
         setPositions(next);
-        applyPositions(next);
+        applySettings(next, whiteBalancePreset);
       },
     };
+  }
+
+  function handleSelectWhiteBalance(preset: WhiteBalancePreset) {
+    setWhiteBalancePreset(preset);
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    applySettings(positions, preset);
   }
 
   if (!permission) {
@@ -247,17 +278,31 @@ export default function CameraCalibrationScreen({ initialSettings, onConfirm, on
             {...makeSliderHandlers('shutterPosition')}
           />
 
-          <Text className="mt-4 font-inter-bold text-base text-body-strong">Color Warmth</Text>
-          <Slider
-            accessibilityRole="adjustable"
-            accessibilityLabel="Color Warmth"
-            minimumValue={0}
-            maximumValue={1}
-            value={positions.whiteBalancePosition}
-            minimumTrackTintColor="#10b981"
-            maximumTrackTintColor="#3a3a3a"
-            {...makeSliderHandlers('whiteBalancePosition')}
-          />
+          <Text className="mt-4 font-inter-bold text-base text-body-strong">White Balance</Text>
+          <View className="mt-2 flex-row flex-wrap gap-2">
+            {WHITE_BALANCE_PRESETS.filter(({ value }) => capabilities.availableWhiteBalancePresets.includes(value)).map(
+              ({ value, label }) => (
+                <TouchableOpacity
+                  key={value}
+                  accessibilityRole="button"
+                  accessibilityLabel={`White balance: ${label}`}
+                  activeOpacity={0.7}
+                  onPress={() => handleSelectWhiteBalance(value)}
+                  className={`h-12 items-center justify-center border-2 px-4 ${
+                    whiteBalancePreset === value ? 'border-primary bg-surface-elevated' : 'border-hairline-strong'
+                  }`}
+                >
+                  <Text
+                    className={`font-inter-bold text-[13px] uppercase tracking-[1.2px] ${
+                      whiteBalancePreset === value ? 'text-primary' : 'text-body'
+                    }`}
+                  >
+                    {label}
+                  </Text>
+                </TouchableOpacity>
+              ),
+            )}
+          </View>
 
           <View className="mt-6 flex-row gap-3">
             <TouchableOpacity

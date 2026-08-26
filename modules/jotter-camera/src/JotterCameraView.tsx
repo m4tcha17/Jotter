@@ -12,7 +12,7 @@ import type {
 
 type NativeViewInstance = {
   getCapabilities: () => Promise<CameraCapabilities>;
-  setManualExposure: (iso: number, shutterSpeedNs: number, whiteBalanceKelvin: number) => Promise<void>;
+  setManualExposure: (iso: number, shutterSpeedNs: number, whiteBalancePreset: string) => Promise<void>;
   takePicture: () => Promise<TakePictureResult>;
 };
 
@@ -30,7 +30,7 @@ function JotterCameraViewImpl(props: JotterCameraViewProps, ref: Ref<JotterCamer
     },
     setManualExposure: async (options: ManualExposureOptions) => {
       if (!nativeRef.current) throw new Error('JotterCameraView is not mounted');
-      await nativeRef.current.setManualExposure(options.iso, options.shutterSpeedNs, options.whiteBalanceKelvin);
+      await nativeRef.current.setManualExposure(options.iso, options.shutterSpeedNs, options.whiteBalancePreset);
     },
     takePicture: async () => {
       if (!nativeRef.current) throw new Error('JotterCameraView is not mounted');

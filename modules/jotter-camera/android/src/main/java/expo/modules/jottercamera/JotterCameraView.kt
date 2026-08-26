@@ -47,8 +47,8 @@ class JotterCameraView(context: Context, appContext: AppContext) : ExpoView(cont
 
   fun getCapabilities(): Map<String, Any?>? = controller.queryCapabilities()?.toResultMap()
 
-  fun setManualExposure(iso: Int, shutterSpeedNs: Long, whiteBalanceKelvin: Int) {
-    controller.setManualExposure(ManualExposureSettings(iso, shutterSpeedNs, whiteBalanceKelvin))
+  fun setManualExposure(iso: Int, shutterSpeedNs: Long, whiteBalancePreset: String) {
+    controller.setManualExposure(ManualExposureSettings(iso, shutterSpeedNs, whiteBalancePreset))
   }
 
   fun takePicture(onResult: (String) -> Unit, onError: (Exception) -> Unit) {
@@ -59,5 +59,6 @@ class JotterCameraView(context: Context, appContext: AppContext) : ExpoView(cont
 private fun CameraCapabilities.toResultMap(): Map<String, Any?> = mapOf(
   "isoRange" to listOf(isoRange.lower, isoRange.upper),
   "exposureTimeRangeNs" to listOf(exposureTimeRangeNs.lower, exposureTimeRangeNs.upper),
-  "availableResolutions" to availableResolutions.map { (w, h) -> mapOf("width" to w, "height" to h) }
+  "availableResolutions" to availableResolutions.map { (w, h) -> mapOf("width" to w, "height" to h) },
+  "availableWhiteBalancePresets" to availableWhiteBalancePresets
 )

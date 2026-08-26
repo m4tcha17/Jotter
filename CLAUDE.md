@@ -11,7 +11,7 @@ Expo, React Native, Supabase, TypeScript
 - Ask before touching files outside the current task scope
 - Never touch sensitive files (e.g. .env, .env.*, credentials, keys) — do not read, edit, print, or move them
 - Never commit changes to files outside the current task scope
-- Avoid committing changes automatically
+- Never commit changes unless the user explicitly asks in that turn — no auto-commit at end of a task/plan/subagent workflow
 - Never run `expo run:android` / `expo run:ios` (or equivalent build+launch commands) yourself — the user runs the app on-device manually. Running it in parallel with a user-initiated run causes port/adb-reverse conflicts. Static checks (`tsc`, `jest`) are fine.
 
 

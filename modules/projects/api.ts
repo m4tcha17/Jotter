@@ -2,7 +2,7 @@ import { getCurrentUserId, getDb, newId, nowIso } from '../../lib/db';
 import { insertFieldWithCategory } from '../fields/api';
 import type { NewFieldInput } from '../fields/api';
 import type { CaptureSlotInput } from '../capture/api';
-import type { ManualExposureOptions } from 'jotter-camera';
+import type { ManualExposureOptions, WhiteBalancePreset } from 'jotter-camera';
 
 export type CaptureMode = 'single' | 'multi';
 
@@ -53,7 +53,7 @@ export async function createProject(input: {
       input.color,
       input.cameraSettings?.iso ?? null,
       input.cameraSettings?.shutterSpeedNs ?? null,
-      input.cameraSettings ? String(input.cameraSettings.whiteBalanceKelvin) : null,
+      input.cameraSettings?.whiteBalancePreset ?? null,
       input.captureMode,
       nowIso(),
     );
@@ -85,7 +85,7 @@ export async function fetchProjectCameraSettings(projectId: string): Promise<Man
   const row = await db.getFirstAsync<{
     camera_iso: number | null;
     camera_shutter_speed_ns: number | null;
-    camera_white_balance: string | null;
+    camera_white_balance: WhiteBalancePreset | null;
   }>('SELECT camera_iso, camera_shutter_speed_ns, camera_white_balance FROM projects WHERE id = ?', projectId);
 
   if (!row || row.camera_iso == null || row.camera_shutter_speed_ns == null || row.camera_white_balance == null) {
@@ -94,7 +94,7 @@ export async function fetchProjectCameraSettings(projectId: string): Promise<Man
   return {
     iso: row.camera_iso,
     shutterSpeedNs: row.camera_shutter_speed_ns,
-    whiteBalanceKelvin: Number(row.camera_white_balance),
+    whiteBalancePreset: row.camera_white_balance,
   };
 }
 
@@ -104,7 +104,7 @@ export async function updateProjectCameraSettings(projectId: string, settings: M
     'UPDATE projects SET camera_iso = ?, camera_shutter_speed_ns = ?, camera_white_balance = ? WHERE id = ?',
     settings.iso,
     settings.shutterSpeedNs,
-    String(settings.whiteBalanceKelvin),
+    settings.whiteBalancePreset,
     projectId,
   );
 }

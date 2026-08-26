@@ -5,4 +5,5 @@ export type {
   JotterCameraViewProps,
   ManualExposureOptions,
   TakePictureResult,
+  WhiteBalancePreset,
 } from './src/JotterCamera.types';

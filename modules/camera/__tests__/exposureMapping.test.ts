@@ -1,12 +1,4 @@
-import {
-  isoToSlider,
-  sliderToIso,
-  shutterSpeedNsToSlider,
-  sliderToShutterSpeedNs,
-  whiteBalanceKelvinToSlider,
-  sliderToWhiteBalanceKelvin,
-  WHITE_BALANCE_KELVIN_RANGE,
-} from '../exposureMapping';
+import { isoToSlider, sliderToIso, shutterSpeedNsToSlider, sliderToShutterSpeedNs } from '../exposureMapping';
 
 const ISO_RANGE: [number, number] = [50, 6400];
 const SHUTTER_RANGE_NS: [number, number] = [30833, 30000000000];
@@ -65,26 +57,5 @@ describe('Shutter speed mapping (log scale)', () => {
   it('clamps out-of-range values when converting back to a slider position', () => {
     expect(shutterSpeedNsToSlider(1, SHUTTER_RANGE_NS)).toBe(0);
     expect(shutterSpeedNsToSlider(999_999_999_999, SHUTTER_RANGE_NS)).toBe(1);
-  });
-});
-
-describe('White balance mapping (linear scale, fixed range)', () => {
-  it('uses a fixed 2000K-10000K range', () => {
-    expect(WHITE_BALANCE_KELVIN_RANGE).toEqual([2000, 10000]);
-  });
-
-  it('maps slider position 0 to 2000K and position 1 to 10000K', () => {
-    expect(sliderToWhiteBalanceKelvin(0)).toBe(2000);
-    expect(sliderToWhiteBalanceKelvin(1)).toBe(10000);
-  });
-
-  it('round-trips a midpoint value', () => {
-    const kelvin = sliderToWhiteBalanceKelvin(0.5);
-    expect(whiteBalanceKelvinToSlider(kelvin)).toBeCloseTo(0.5, 2);
-  });
-
-  it('clamps out-of-range values when converting back to a slider position', () => {
-    expect(whiteBalanceKelvinToSlider(100)).toBe(0);
-    expect(whiteBalanceKelvinToSlider(50000)).toBe(1);
   });
 });

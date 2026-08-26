@@ -1,3 +1,48 @@
+jest.mock('expo-file-system', () => {
+  const state: { exists: Record<string, boolean>; files: Record<string, string>; log: string[] } = {
+    exists: {},
+    files: {},
+    log: [],
+  };
+
+  class FsNode {
+    uri: string;
+    constructor(...parts: Array<string | { uri: string }>) {
+      this.uri = parts.map((part) => (typeof part === 'string' ? part : part.uri)).join('/');
+    }
+  }
+
+  class Directory extends FsNode {
+    create() {
+      state.log.push(`mkdir:${this.uri}`);
+    }
+    delete() {
+      state.log.push(`rmdir:${this.uri}`);
+    }
+    get exists() {
+      return state.exists[this.uri] ?? true;
+    }
+  }
+
+  class File extends FsNode {
+    async write(content: string) {
+      state.files[this.uri] = content;
+      state.log.push(`write:${this.uri}`);
+    }
+    async copy(destination: { uri: string }) {
+      state.log.push(`copy:${this.uri}->${destination.uri}`);
+    }
+    get exists() {
+      return state.exists[this.uri] ?? false;
+    }
+  }
+
+  return { Directory, File, Paths: { cache: 'cache' }, __fsState: state };
+});
+
+jest.mock('react-native-zip-archive', () => ({ zip: jest.fn(async () => undefined) }));
+
+import { zip } from 'react-native-zip-archive';
 import {
   buildCsvHeader,
   buildCsvRow,
@@ -6,10 +51,17 @@ import {
   photoExportFilename,
   findDuplicateIdentifierValues,
   formatDuplicateSummary,
+  exportProjectData,
 } from '../export';
 import type { ProjectField } from '../../fields/api';
 import type { CaptureSlot } from '../../capture/api';
 import type { SampleRow } from '../../samples/api';
+
+const fsState = (jest.requireMock('expo-file-system') as any).__fsState as {
+  exists: Record<string, boolean>;
+  files: Record<string, string>;
+  log: string[];
+};
 
 const textField: ProjectField = {
   id: 'f-text',
@@ -62,6 +114,13 @@ function makeSample(overrides: Partial<SampleRow>): SampleRow {
     ...overrides,
   };
 }
+
+beforeEach(() => {
+  fsState.exists = {};
+  fsState.files = {};
+  fsState.log = [];
+  (zip as jest.Mock).mockClear();
+});
 
 describe('slugify', () => {
   it('lowercases and replaces non-alphanumeric runs with a single hyphen', () => {
@@ -209,5 +268,59 @@ describe('formatDuplicateSummary', () => {
         { value: 'CP-02', sampleRowNumbers: [2, 5] },
       ]),
     ).toBe('CP-01 — used by rows 1, 3\nCP-02 — used by rows 2, 5');
+  });
+});
+
+describe('exportProjectData', () => {
+  it('writes data.csv, copies existing photos, skips missing ones, zips staging dir, then deletes it', async () => {
+    fsState.exists['file:///cache/top.jpg'] = true;
+    const sample = makeSample({
+      photos: { [slot.id]: { localUri: 'file:///cache/top.jpg', remoteUrl: null } },
+    });
+
+    const result = await exportProjectData('Reef Survey', [textField], [slot], [sample]);
+
+    const csvKey = Object.keys(fsState.files).find((uri) => uri.endsWith('data.csv'))!;
+    expect(fsState.files[csvKey]).toBe('id,Notes,Top photo\nsample-1,,photos/0001_top-stop.jpg');
+
+    expect(fsState.log.some((entry) => entry.startsWith('copy:file:///cache/top.jpg->'))).toBe(true);
+    expect(zip).toHaveBeenCalledTimes(1);
+    expect(fsState.log.some((entry) => entry.startsWith('rmdir:'))).toBe(true);
+    expect(result.duplicates).toEqual([]);
+    expect(result.zipUri).toContain('reef-survey-export-');
+  });
+
+  it('skips copying a slot photo whose source file does not exist', async () => {
+    const sample = makeSample({ photos: { [slot.id]: { localUri: 'file:///cache/missing.jpg', remoteUrl: null } } });
+
+    await exportProjectData('Reef Survey', [], [slot], [sample]);
+
+    expect(fsState.log.some((entry) => entry.startsWith('copy:'))).toBe(false);
+  });
+
+  it('writes duplicate-ids.txt only when the identifier field has duplicate values', async () => {
+    const samples = [
+      makeSample({ id: 'a', values: { [idField.id]: 'CP-01' } }),
+      makeSample({ id: 'b', values: { [idField.id]: 'CP-01' } }),
+    ];
+
+    const result = await exportProjectData('Reef Survey', [idField], [], samples);
+
+    const summaryKey = Object.keys(fsState.files).find((uri) => uri.endsWith('duplicate-ids.txt'));
+    expect(summaryKey).toBeDefined();
+    expect(result.duplicates).toEqual([{ value: 'CP-01', sampleRowNumbers: [1, 2] }]);
+  });
+
+  it('does not write duplicate-ids.txt when there are no duplicates', async () => {
+    await exportProjectData('Reef Survey', [idField], [], [makeSample({ values: { [idField.id]: 'CP-01' } })]);
+
+    expect(Object.keys(fsState.files).some((uri) => uri.endsWith('duplicate-ids.txt'))).toBe(false);
+  });
+
+  it('deletes the staging directory and rethrows if zip fails', async () => {
+    (zip as jest.Mock).mockRejectedValueOnce(new Error('disk full'));
+
+    await expect(exportProjectData('Reef Survey', [textField], [], [makeSample({})])).rejects.toThrow('disk full');
+    expect(fsState.log.some((entry) => entry.startsWith('rmdir:'))).toBe(true);
   });
 });

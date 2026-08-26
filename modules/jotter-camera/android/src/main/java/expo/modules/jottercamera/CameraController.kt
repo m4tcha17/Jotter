@@ -4,10 +4,8 @@ import android.content.Context
 import android.graphics.ImageFormat
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CaptureRequest
-import android.hardware.camera2.params.ColorSpaceTransform
 import android.util.Log
 import android.util.Range
-import android.util.Rational
 import androidx.camera.camera2.interop.Camera2CameraControl
 import androidx.camera.camera2.interop.Camera2CameraInfo
 import androidx.camera.camera2.interop.CaptureRequestOptions
@@ -31,13 +29,14 @@ import java.io.File
 data class CameraCapabilities(
   val isoRange: Range<Int>,
   val exposureTimeRangeNs: Range<Long>,
-  val availableResolutions: List<Pair<Int, Int>>
+  val availableResolutions: List<Pair<Int, Int>>,
+  val availableWhiteBalancePresets: List<String>
 )
 
 data class ManualExposureSettings(
   val iso: Int,
   val shutterSpeedNs: Long,
-  val whiteBalanceKelvin: Int
+  val whiteBalancePreset: String
 )
 
 class CameraController(
@@ -93,34 +92,30 @@ class CameraController(
     val exposureRange = characteristics.getCameraCharacteristic(CameraCharacteristics.SENSOR_INFO_EXPOSURE_TIME_RANGE) ?: return null
     val map = characteristics.getCameraCharacteristic(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP) ?: return null
     val resolutions = map.getOutputSizes(ImageFormat.JPEG)?.map { it.width to it.height } ?: emptyList()
-    return CameraCapabilities(isoRange, exposureRange, resolutions)
+    val awbModes = characteristics.getCameraCharacteristic(CameraCharacteristics.CONTROL_AWB_AVAILABLE_MODES) ?: intArrayOf()
+    val whiteBalancePresets = WhiteBalance.availablePresets(awbModes)
+    return CameraCapabilities(isoRange, exposureRange, resolutions, whiteBalancePresets)
   }
 
+  // CONTROL_MODE stays AUTO (not OFF) so the AWB routine keeps running for the chosen preset —
+  // AE and AF are individually forced OFF instead, which Camera2 honors independently of AWB.
+  // This lets white balance use the device's own real AWB color pipeline (the same one a stock
+  // camera app relies on) while ISO/shutter/focus stay fully locked and repeatable. The previous
+  // approach (CONTROL_MODE_OFF + hand-computed COLOR_CORRECTION_GAINS/TRANSFORM) bypassed that
+  // real color science entirely and produced a persistent green-biased cast.
   @OptIn(ExperimentalCamera2Interop::class)
   fun setManualExposure(settings: ManualExposureSettings) {
     val cameraControl = camera?.cameraControl ?: return
-    val gains = WhiteBalance.kelvinToRggbGains(settings.whiteBalanceKelvin)
     val options = CaptureRequestOptions.Builder()
-      .setCaptureRequestOption(CaptureRequest.CONTROL_MODE, CaptureRequest.CONTROL_MODE_OFF)
+      .setCaptureRequestOption(CaptureRequest.CONTROL_MODE, CaptureRequest.CONTROL_MODE_AUTO)
       .setCaptureRequestOption(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_OFF)
-      .setCaptureRequestOption(CaptureRequest.CONTROL_AWB_MODE, CaptureRequest.CONTROL_AWB_MODE_OFF)
-      // CONTROL_MODE_OFF stops AF too, but leaves the lens wherever it last converged instead of
-      // locking it — GLCM/Canny feature extraction is blur-sensitive, so pin it to the rig's fixed
-      // capture distance instead of leaving that undefined.
+      .setCaptureRequestOption(CaptureRequest.CONTROL_AWB_MODE, WhiteBalance.awbModeFor(settings.whiteBalancePreset))
+      // Locking AF here too (not just AE) — leaving it wherever it last converged instead of
+      // pinning it would undermine GLCM/Canny feature extraction, which is blur-sensitive.
       .setCaptureRequestOption(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_OFF)
       .setCaptureRequestOption(CaptureRequest.LENS_FOCUS_DISTANCE, FIXED_FOCUS_DISTANCE_DIOPTERS)
       .setCaptureRequestOption(CaptureRequest.SENSOR_SENSITIVITY, settings.iso)
       .setCaptureRequestOption(CaptureRequest.SENSOR_EXPOSURE_TIME, settings.shutterSpeedNs)
-      .setCaptureRequestOption(CaptureRequest.COLOR_CORRECTION_MODE, CaptureRequest.COLOR_CORRECTION_MODE_TRANSFORM_MATRIX)
-      .setCaptureRequestOption(
-        CaptureRequest.COLOR_CORRECTION_GAINS,
-        android.hardware.camera2.params.RggbChannelVector(gains[0], gains[1], gains[2], gains[3])
-      )
-      // TRANSFORM_MATRIX mode reads both GAINS and TRANSFORM together — leaving TRANSFORM unset
-      // lets it sit at whatever stale AWB value the HAL last computed, fighting the manual gains
-      // above and producing an unpredictable cast. Pin it to identity so gains are the only thing
-      // doing color work.
-      .setCaptureRequestOption(CaptureRequest.COLOR_CORRECTION_TRANSFORM, IDENTITY_COLOR_TRANSFORM)
       .build()
     Camera2CameraControl.from(cameraControl).setCaptureRequestOptions(options)
   }
@@ -153,13 +148,5 @@ class CameraController(
     // Diopters (1/meters). Copra capture rig holds the subject ~25cm from the lens — adjust if the
     // rig's fixed camera-to-subject distance changes.
     private const val FIXED_FOCUS_DISTANCE_DIOPTERS = 4.0f
-
-    private val IDENTITY_COLOR_TRANSFORM = ColorSpaceTransform(
-      arrayOf(
-        Rational(1, 1), Rational(0, 1), Rational(0, 1),
-        Rational(0, 1), Rational(1, 1), Rational(0, 1),
-        Rational(0, 1), Rational(0, 1), Rational(1, 1)
-      )
-    )
   }
 }
