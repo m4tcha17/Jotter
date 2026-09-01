@@ -47,6 +47,8 @@ class CameraController(
   private var cameraProvider: ProcessCameraProvider? = null
   internal var camera: Camera? = null
   internal var imageCapture: ImageCapture? = null
+  private var boundPreview: Preview? = null
+  private var boundCapture: ImageCapture? = null
 
   var onCameraReady: (() -> Unit)? = null
 
@@ -72,8 +74,16 @@ class CameraController(
     val useCases = UseCaseGroup.Builder().addUseCase(preview).addUseCase(capture).build()
 
     try {
-      provider.unbindAll()
+      // Unbind only THIS controller's own previous use cases — never unbindAll(), which
+      // would tear down any other JotterCameraView's binding too.
+      val previousPreview = boundPreview
+      val previousCapture = boundCapture
+      if (previousPreview != null && previousCapture != null) {
+        provider.unbind(previousPreview, previousCapture)
+      }
       camera = provider.bindToLifecycle(lifecycleOwner, selector, useCases)
+      boundPreview = preview
+      boundCapture = capture
       camera?.cameraInfo?.cameraState?.observe(lifecycleOwner) { state ->
         if (state.type == CameraState.Type.OPEN) {
           onCameraReady?.invoke()
@@ -139,7 +149,13 @@ class CameraController(
   }
 
   fun stop() {
-    cameraProvider?.unbindAll()
+    val preview = boundPreview
+    val capture = boundCapture
+    if (preview != null && capture != null) {
+      cameraProvider?.unbind(preview, capture)
+    }
+    boundPreview = null
+    boundCapture = null
   }
 
   companion object {

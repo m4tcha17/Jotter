@@ -1,6 +1,7 @@
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Modal, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { fetchCaptureSlots } from './api';
@@ -31,6 +32,7 @@ export default function CaptureScreen({ route }: Props) {
   const [slotIndex, setSlotIndex] = useState(0);
   const [step, setStep] = useState<Step>('camera');
   const [photos, setPhotos] = useState<NewSamplePhoto[]>([]);
+  const [cameraOpen, setCameraOpen] = useState(false);
 
   const load = useCallback(() => {
     setLoadError(false);
@@ -49,6 +51,18 @@ export default function CaptureScreen({ route }: Props) {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Camera settings can change (recalibration) while this screen stays mounted in the tab
+  // bar — refetch on every focus so a stale ISO/shutter/white-balance from an earlier
+  // mount doesn't keep getting applied. Only cameraSettings refreshes here, never slots/
+  // fields/slotIndex/photos/step, so an in-progress capture isn't reset by a tab switch.
+  useFocusEffect(
+    useCallback(() => {
+      fetchProjectCameraSettings(projectId)
+        .then(setCameraSettings)
+        .catch(() => {});
+    }, [projectId])
+  );
 
   if (slots === null || fields === null) {
     return (
@@ -117,13 +131,41 @@ export default function CaptureScreen({ route }: Props) {
   }
 
   if (step === 'camera') {
-    // No SafeAreaView here — CameraCaptureStep already applies its own bottom inset, and
-    // double-nesting it (this screen's own SafeAreaView + its) can squeeze the native camera
-    // preview's laid-out height enough that CameraX gets zero surfaces to render into.
+    // The native camera view only mounts inside this Modal, opened on demand by the button
+    // below — never embedded directly in this tab screen. Mounting it there wedged CameraX on
+    // some devices (bottom-tab Fragment hosting never completes the camera session, unlike a
+    // Modal's own window) every time this step re-rendered, with no way to recover short of
+    // leaving the tab. The Modal mirrors SampleForm's photo-field capture, which works reliably.
     return (
       <View className="flex-1 bg-canvas">
         <CaptureHeader slotIndex={slotIndex} slotCount={slots.length} />
-        <CameraCaptureStep label={currentSlot.label} cameraSettings={cameraSettings} onCapture={handleAdvanceSlot} />
+        <SafeAreaView edges={['bottom']} className="flex-1 items-center justify-center px-6">
+          <Text className="mb-6 text-center font-inter-bold text-base text-body-strong">{currentSlot.label}</Text>
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel={`Take sample photo — ${currentSlot.label}`}
+            activeOpacity={0.85}
+            onPress={() => setCameraOpen(true)}
+            className="h-[56px] w-full items-center justify-center bg-primary"
+          >
+            <Text className="font-inter-bold text-[13px] uppercase tracking-[1.2px] text-primary-on">
+              Take Sample
+            </Text>
+          </TouchableOpacity>
+        </SafeAreaView>
+
+        <Modal visible={cameraOpen} animationType="slide" onRequestClose={() => setCameraOpen(false)}>
+          {cameraOpen && (
+            <CameraCaptureStep
+              label={currentSlot.label}
+              cameraSettings={cameraSettings}
+              onCapture={(uri) => {
+                setCameraOpen(false);
+                handleAdvanceSlot(uri);
+              }}
+            />
+          )}
+        </Modal>
       </View>
     );
   }
