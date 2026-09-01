@@ -3,7 +3,7 @@ package expo.modules.jottercamera
 import android.content.Context
 import android.widget.FrameLayout
 import androidx.camera.view.PreviewView
-import androidx.lifecycle.ViewTreeLifecycleOwner
+import androidx.lifecycle.findViewTreeLifecycleOwner
 import expo.modules.kotlin.AppContext
 import expo.modules.kotlin.viewevent.EventDispatcher
 import expo.modules.kotlin.views.ExpoView
@@ -36,7 +36,7 @@ class JotterCameraView(context: Context, appContext: AppContext) : ExpoView(cont
 
   override fun onAttachedToWindow() {
     super.onAttachedToWindow()
-    val owner = ViewTreeLifecycleOwner.get(this) ?: return
+    val owner = findViewTreeLifecycleOwner() ?: return
     controller.start(owner)
   }
 

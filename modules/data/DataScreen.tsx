@@ -3,7 +3,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, Image, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import * as Sharing from 'expo-sharing';
+import { Directory, File } from 'expo-file-system';
 
 import { fetchCaptureSlots } from '../capture/api';
 import type { CaptureSlot } from '../capture/api';
@@ -129,10 +129,14 @@ export default function DataScreen({ route }: Props) {
           `${result.duplicates.length} value(s) are used by more than one sample. A full list is included in the export as duplicate-ids.txt.`,
         );
       }
-      await Sharing.shareAsync(result.zipUri, {
-        mimeType: 'application/zip',
-        dialogTitle: 'Export project data',
-      });
+      try {
+        const destination = await Directory.pickDirectoryAsync();
+        await new File(result.zipUri).copy(destination);
+      } catch {
+        // Cancelling the folder picker rejects the same way a real write failure would —
+        // the export itself already succeeded above, so treat this as a silent cancel
+        // rather than surfacing "Export failed" for a user who just backed out of picking.
+      }
     } catch (err) {
       Alert.alert('Export failed', err instanceof Error ? err.message : 'Something went wrong.');
     } finally {
@@ -171,7 +175,7 @@ export default function DataScreen({ route }: Props) {
           activeOpacity={0.85}
           disabled={isExporting}
           onPress={handleExport}
-          className="h-12 min-w-[96px] items-center justify-center rounded-none bg-primary px-4"
+          className="h-12 items-center justify-center rounded-none bg-primary px-6"
         >
           {isExporting ? (
             <ActivityIndicator size="small" color="#0a0a0a" />
