@@ -1,5 +1,4 @@
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
-import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Modal, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -8,8 +7,6 @@ import { fetchCaptureSlots } from './api';
 import type { CaptureSlot } from './api';
 import { fetchFields } from '../fields/api';
 import type { ProjectField } from '../fields/api';
-import { fetchProjectCameraSettings } from '../projects/api';
-import type { ManualExposureOptions } from 'jotter-camera';
 import { createSample } from '../samples/api';
 import type { NewSamplePhoto, NewSampleValue } from '../samples/api';
 import type { ProjectTabParamList } from '../../navigation/ProjectTabs';
@@ -27,7 +24,6 @@ export default function CaptureScreen({ route }: Props) {
   const [slots, setSlots] = useState<CaptureSlot[] | null>(null);
   const [fields, setFields] = useState<ProjectField[] | null>(null);
   const [loadError, setLoadError] = useState(false);
-  const [cameraSettings, setCameraSettings] = useState<ManualExposureOptions | null>(null);
 
   const [slotIndex, setSlotIndex] = useState(0);
   const [step, setStep] = useState<Step>('camera');
@@ -36,11 +32,10 @@ export default function CaptureScreen({ route }: Props) {
 
   const load = useCallback(() => {
     setLoadError(false);
-    Promise.all([fetchCaptureSlots(projectId), fetchFields(projectId), fetchProjectCameraSettings(projectId)])
-      .then(([loadedSlots, loadedFields, loadedCameraSettings]) => {
+    Promise.all([fetchCaptureSlots(projectId), fetchFields(projectId)])
+      .then(([loadedSlots, loadedFields]) => {
         setSlots(loadedSlots);
         setFields(loadedFields);
-        setCameraSettings(loadedCameraSettings);
         setSlotIndex(0);
         setPhotos([]);
         setStep(loadedSlots[0]?.target_angle_degrees != null ? 'angle-assist' : 'camera');
@@ -51,18 +46,6 @@ export default function CaptureScreen({ route }: Props) {
   useEffect(() => {
     load();
   }, [load]);
-
-  // Camera settings can change (recalibration) while this screen stays mounted in the tab
-  // bar — refetch on every focus so a stale ISO/shutter/white-balance from an earlier
-  // mount doesn't keep getting applied. Only cameraSettings refreshes here, never slots/
-  // fields/slotIndex/photos/step, so an in-progress capture isn't reset by a tab switch.
-  useFocusEffect(
-    useCallback(() => {
-      fetchProjectCameraSettings(projectId)
-        .then(setCameraSettings)
-        .catch(() => {});
-    }, [projectId])
-  );
 
   if (slots === null || fields === null) {
     return (
@@ -158,7 +141,7 @@ export default function CaptureScreen({ route }: Props) {
           {cameraOpen && (
             <CameraCaptureStep
               label={currentSlot.label}
-              cameraSettings={cameraSettings}
+              onCancel={() => setCameraOpen(false)}
               onCapture={(uri) => {
                 setCameraOpen(false);
                 handleAdvanceSlot(uri);
@@ -175,7 +158,6 @@ export default function CaptureScreen({ route }: Props) {
       <SampleForm
         projectId={projectId}
         fields={fields}
-        cameraSettings={cameraSettings}
         saving={step === 'saving'}
         onSave={handleSaveSample}
       />

@@ -1,125 +1,116 @@
-import { Ionicons } from '@expo/vector-icons';
-import { useCameraPermissions } from 'expo-camera';
-import { File, Paths } from 'expo-file-system';
-import { JotterCameraView } from 'jotter-camera';
-import type { JotterCameraViewHandle, ManualExposureOptions } from 'jotter-camera';
-import { useRef, useState } from 'react';
-import { Text, TouchableOpacity, View } from 'react-native';
+import { useState } from 'react';
+import { Image, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { File, Paths } from 'expo-file-system';
+
+import { capture, isOpenCameraInstalled } from 'jotter-open-camera';
 import { newId } from '../../lib/db';
+import OpenCameraInstallGate from './OpenCameraInstallGate';
 
 type Props = {
   label: string;
-  cameraSettings: ManualExposureOptions | null;
   onCapture: (localUri: string) => void;
+  onCancel: () => void;
 };
 
-export default function CameraCaptureStep({ label, cameraSettings, onCapture }: Props) {
-  const [permission, requestPermission] = useCameraPermissions();
-  const [ready, setReady] = useState(false);
-  const [capturing, setCapturing] = useState(false);
-  const [exposureError, setExposureError] = useState(false);
-  const [exposureConfirmed, setExposureConfirmed] = useState(false);
-  const cameraRef = useRef<JotterCameraViewHandle>(null);
-  // setManualExposure rebinds the camera natively, which re-fires onCameraReady — this guards
-  // against re-applying exposure (and re-triggering another rebind) in a feedback loop.
-  const exposureAppliedRef = useRef(false);
+type Stage = 'idle' | 'capturing' | 'review';
 
-  if (!permission) {
-    return <View className="flex-1 bg-canvas" />;
+export default function CameraCaptureStep({ label, onCapture, onCancel }: Props) {
+  const [installed] = useState(isOpenCameraInstalled);
+  const [missing, setMissing] = useState(false);
+  const [stage, setStage] = useState<Stage>('idle');
+  const [photoUri, setPhotoUri] = useState<string | null>(null);
+
+  if (!installed || missing) {
+    return <OpenCameraInstallGate onCancel={onCancel} />;
   }
 
-  if (!permission.granted) {
+  async function runCapture() {
+    setStage('capturing');
+    try {
+      const result = await capture();
+      if ('cancelled' in result) {
+        setStage('idle');
+        return;
+      }
+      setPhotoUri(result.uri);
+      setStage('review');
+    } catch (err) {
+      const code = err instanceof Error ? (err as { code?: string }).code : undefined;
+      if (code === 'ERR_OPEN_CAMERA_MISSING') {
+        setMissing(true);
+        return;
+      }
+      setStage('idle');
+    }
+  }
+
+  async function usePhoto() {
+    if (!photoUri) return;
+    const destination = new File(Paths.document, `${newId()}.jpg`);
+    await new File(photoUri).copy(destination);
+    onCapture(destination.uri);
+  }
+
+  if (stage === 'review' && photoUri) {
     return (
-      <SafeAreaView edges={['bottom']} className="flex-1 items-center justify-center bg-canvas px-6">
-        <Text className="text-center font-inter-bold text-base text-body-strong">
-          Jotter needs camera access to capture photos.
-        </Text>
-        <TouchableOpacity
-          accessibilityRole="button"
-          accessibilityLabel="Grant camera permission"
-          activeOpacity={0.85}
-          onPress={requestPermission}
-          className="mt-6 h-[56px] w-full items-center justify-center bg-primary"
-        >
-          <Text className="font-inter-bold text-[13px] uppercase tracking-[1.2px] text-primary-on">
-            Grant Permission
-          </Text>
-        </TouchableOpacity>
+      <SafeAreaView edges={['bottom']} className="flex-1 bg-canvas">
+        <Image source={{ uri: photoUri }} resizeMode="contain" className="flex-1" />
+        <View className="border-t border-hairline px-6 py-6">
+          <Text className="mb-4 text-center font-inter-bold text-base text-body-strong">{label}</Text>
+          <View className="flex-row gap-3">
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="Retake photo"
+              activeOpacity={0.85}
+              onPress={runCapture}
+              className="h-[56px] flex-1 items-center justify-center border-2 border-hairline-strong"
+            >
+              <Text className="font-inter-bold text-[13px] uppercase tracking-[1.2px] text-ink">Retake</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="Use this photo"
+              activeOpacity={0.85}
+              onPress={usePhoto}
+              className="h-[56px] flex-1 items-center justify-center bg-primary"
+            >
+              <Text className="font-inter-bold text-[13px] uppercase tracking-[1.2px] text-primary-on">
+                Use Photo
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </SafeAreaView>
     );
   }
 
-  async function handleCameraReady() {
-    setReady(true);
-    if (!cameraSettings) {
-      setExposureConfirmed(true);
-      return;
-    }
-    if (exposureAppliedRef.current) return;
-    exposureAppliedRef.current = true;
-    setExposureConfirmed(false);
-    try {
-      await cameraRef.current?.setManualExposure(cameraSettings);
-      setExposureError(false);
-      setExposureConfirmed(true);
-    } catch {
-      exposureAppliedRef.current = false;
-      setExposureError(true);
-    }
-  }
-
-  async function handleShutter() {
-    if (!cameraRef.current || !ready || !exposureConfirmed || capturing) return;
-    setCapturing(true);
-    try {
-      const result = await cameraRef.current.takePicture();
-      const destination = new File(Paths.document, `${newId()}.jpg`);
-      await new File(result.uri).copy(destination);
-      onCapture(destination.uri);
-    } finally {
-      setCapturing(false);
-    }
-  }
-
   return (
-    <SafeAreaView edges={['bottom']} className="flex-1 bg-canvas">
-      <JotterCameraView ref={cameraRef} style={{ flex: 1 }} onCameraReady={handleCameraReady} />
-
-      {exposureError && (
-        <View className="items-center border-t border-hairline px-6 py-4">
-          <Text className="text-center font-inter-bold text-base text-destructive">
-            Could not lock camera settings for this project.
-          </Text>
-          <TouchableOpacity
-            accessibilityRole="button"
-            accessibilityLabel="Retry applying camera settings"
-            activeOpacity={0.85}
-            onPress={handleCameraReady}
-            className="mt-3 h-12 items-center justify-center border-2 border-hairline-strong px-6"
-          >
-            <Text className="font-inter-bold text-[13px] uppercase tracking-[1.2px] text-ink">Retry</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {!exposureError && (
-        <View className="items-center border-t border-hairline px-6 py-6">
-          <Text className="mb-4 font-inter-bold text-base text-body-strong">{label}</Text>
-          <TouchableOpacity
-            accessibilityRole="button"
-            accessibilityLabel={`Take photo — ${label}`}
-            activeOpacity={0.85}
-            disabled={!ready || !exposureConfirmed || capturing}
-            onPress={handleShutter}
-            className={`h-20 w-20 items-center justify-center rounded-full border-4 border-hairline-strong ${
-              capturing ? 'bg-surface-elevated' : 'bg-primary'
-            }`}
-          >
-            <Ionicons name="camera" size={28} color={capturing ? '#7a7a7a' : '#03140d'} />
-          </TouchableOpacity>
-        </View>
-      )}
+    <SafeAreaView edges={['bottom']} className="flex-1 items-center justify-center bg-canvas px-6">
+      <Text className="mb-6 text-center font-inter-bold text-base text-body-strong">{label}</Text>
+      <TouchableOpacity
+        accessibilityRole="button"
+        accessibilityLabel={`Open Camera to take photo — ${label}`}
+        activeOpacity={0.85}
+        disabled={stage === 'capturing'}
+        onPress={runCapture}
+        className={`h-[56px] w-full items-center justify-center ${
+          stage === 'capturing' ? 'bg-surface-elevated' : 'bg-primary'
+        }`}
+      >
+        <Text className="font-inter-bold text-[13px] uppercase tracking-[1.2px] text-primary-on">
+          {stage === 'capturing' ? 'Opening…' : 'Open Camera'}
+        </Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        accessibilityRole="button"
+        accessibilityLabel="Cancel"
+        activeOpacity={0.7}
+        onPress={onCancel}
+        className="mt-3 h-12 items-center justify-center px-6"
+      >
+        <Text className="font-inter-bold text-[13px] uppercase tracking-[1.2px] text-body">Cancel</Text>
+      </TouchableOpacity>
     </SafeAreaView>
   );
 }
