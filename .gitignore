@@ -45,3 +45,6 @@ modules/jotter-camera/android/build/
 
 # git worktrees (subagent-driven-development scratch workspaces)
 .worktrees/
+
+# session scratch — camera test photos
+sample-photos/
