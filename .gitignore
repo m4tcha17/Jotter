@@ -40,5 +40,8 @@ yarn-error.*
 /ios
 /android
 
+# native module build output
+modules/jotter-camera/android/build/
+
 # git worktrees (subagent-driven-development scratch workspaces)
 .worktrees/
