@@ -1,0 +1,2 @@
+expo.modules.jotteropencamera
+xml jotter_open_camera_file_paths

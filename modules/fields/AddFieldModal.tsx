@@ -39,6 +39,8 @@ export default function AddFieldModal({ visible, existingCategories, onClose, on
   const [options, setOptions] = useState<string[]>([]);
   const [optionDraft, setOptionDraft] = useState('');
   const [optionDraftFocused, setOptionDraftFocused] = useState(false);
+  const [isRequired, setIsRequired] = useState(false);
+  const [isSampleIdentifier, setIsSampleIdentifier] = useState(false);
 
   function reset() {
     setName('');
@@ -49,6 +51,8 @@ export default function AddFieldModal({ visible, existingCategories, onClose, on
     setNewCategoryScope('field');
     setOptions([]);
     setOptionDraft('');
+    setIsRequired(false);
+    setIsSampleIdentifier(false);
   }
 
   function handleAddOption() {
@@ -69,7 +73,7 @@ export default function AddFieldModal({ visible, existingCategories, onClose, on
     }
 
     if (dataType !== 'category') {
-      onAdd({ name: name.trim(), dataType });
+      onAdd({ name: name.trim(), dataType, isRequired, isSampleIdentifier });
       reset();
       onClose();
       return;
@@ -80,7 +84,7 @@ export default function AddFieldModal({ visible, existingCategories, onClose, on
         Alert.alert('Choose a category', 'Pick an existing category, or switch to creating a new one.');
         return;
       }
-      onAdd({ name: name.trim(), dataType, category: { kind: 'existing', categoryId: selectedCategoryId } });
+      onAdd({ name: name.trim(), dataType, category: { kind: 'existing', categoryId: selectedCategoryId }, isRequired, isSampleIdentifier });
     } else {
       if (!newCategoryName.trim()) {
         Alert.alert('Missing category name', 'Give the new category a name.');
@@ -94,6 +98,8 @@ export default function AddFieldModal({ visible, existingCategories, onClose, on
         name: name.trim(),
         dataType,
         category: { kind: 'new', name: newCategoryName.trim(), scope: newCategoryScope, options },
+        isRequired,
+        isSampleIdentifier,
       });
     }
     reset();
@@ -121,14 +127,18 @@ export default function AddFieldModal({ visible, existingCategories, onClose, on
           />
 
           <Text className="mt-6 font-inter-bold text-base text-body-strong">Data type</Text>
-          <View className="mt-2 flex-row flex-wrap gap-2">
+          <View className="mt-6 flex-row flex-wrap gap-2">
             {DATA_TYPES.map((type) => (
               <TouchableOpacity
                 key={type.value}
                 accessibilityRole="button"
                 accessibilityLabel={`Data type: ${type.label}`}
                 activeOpacity={0.7}
-                onPress={() => setDataType(type.value)}
+                onPress={() => {
+                  setDataType(type.value);
+                  // Timestamp fields are auto-filled — they can't be a sample identifier.
+                  if (type.value === 'timestamp') setIsSampleIdentifier(false);
+                }}
                 className={`${CHIP_BASE} ${
                   dataType === type.value ? 'border-primary bg-surface-elevated' : 'border-hairline-strong'
                 }`}
@@ -138,6 +148,70 @@ export default function AddFieldModal({ visible, existingCategories, onClose, on
                 </Text>
               </TouchableOpacity>
             ))}
+          </View>
+
+          {/* Required toggle */}
+          <Text className="mt-6 font-inter-bold text-base text-body-strong">Required</Text>
+          <Text className="mt-1 font-inter-light text-sm text-body">
+            Block saving a sample until this field has a value.
+          </Text>
+          <View className="mt-2 flex-row gap-2">
+            {(['No', 'Yes'] as const).map((label) => {
+              const active = label === 'Yes' ? isRequired : !isRequired;
+              return (
+                <TouchableOpacity
+                  key={label}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Required: ${label}`}
+                  activeOpacity={0.7}
+                  onPress={() => setIsRequired(label === 'Yes')}
+                  className={`${CHIP_BASE} flex-1 ${
+                    active ? 'border-primary bg-surface-elevated' : 'border-hairline-strong'
+                  }`}
+                >
+                  <Text className={`${CHIP_LABEL_BASE} ${active ? 'text-primary' : 'text-body'}`}>
+                    {label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {/* Sample identifier toggle */}
+          <Text className="mt-6 font-inter-bold text-base text-body-strong">Sample Identifier</Text>
+          <Text className="mt-1 font-inter-light text-sm text-body">
+            Use this as the human ID for each sample. Warns if the same value is used twice.
+          </Text>
+          <View className="mt-2 flex-row gap-2">
+            {(['No', 'Yes'] as const).map((label) => {
+              const disabled = dataType === 'timestamp';
+              const active = label === 'Yes' ? isSampleIdentifier : !isSampleIdentifier;
+              return (
+                <TouchableOpacity
+                  key={label}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Sample identifier: ${label}`}
+                  activeOpacity={disabled ? 1 : 0.7}
+                  disabled={disabled}
+                  onPress={() => !disabled && setIsSampleIdentifier(label === 'Yes')}
+                  className={`${CHIP_BASE} flex-1 ${
+                    disabled
+                      ? 'border-hairline opacity-40'
+                      : active
+                        ? 'border-primary bg-surface-elevated'
+                        : 'border-hairline-strong'
+                  }`}
+                >
+                  <Text
+                    className={`${CHIP_LABEL_BASE} ${
+                      disabled ? 'text-muted' : active ? 'text-primary' : 'text-body'
+                    }`}
+                  >
+                    {label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
 
           {dataType === 'category' && (

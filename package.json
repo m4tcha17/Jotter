@@ -29,6 +29,7 @@
     "expo-status-bar": "~56.0.4",
     "expo-web-browser": "~56.0.5",
     "jotter-camera": "file:./modules/jotter-camera",
+    "jotter-open-camera": "file:./modules/jotter-open-camera",
     "nativewind": "^4.2.6",
     "react": "19.2.3",
     "react-dom": "19.2.3",

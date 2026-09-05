@@ -1,0 +1,35 @@
+1<?xml version="1.0" encoding="utf-8"?>
+2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+3    package="expo.modules.jotteropencamera" >
+4
+5    <uses-sdk android:minSdkVersion="24" />
+6
+7    <queries>
+7-->/home/loxx_/Documents/Development/App-Web-Development/jotter/modules/jotter-open-camera/android/src/main/AndroidManifest.xml:2:3-4:13
+8        <package android:name="net.sourceforge.opencamera" />
+8-->/home/loxx_/Documents/Development/App-Web-Development/jotter/modules/jotter-open-camera/android/src/main/AndroidManifest.xml:3:5-58
+8-->/home/loxx_/Documents/Development/App-Web-Development/jotter/modules/jotter-open-camera/android/src/main/AndroidManifest.xml:3:14-55
+9    </queries>
+10
+11    <application>
+11-->/home/loxx_/Documents/Development/App-Web-Development/jotter/modules/jotter-open-camera/android/src/main/AndroidManifest.xml:5:3-15:17
+12        <provider
+12-->/home/loxx_/Documents/Development/App-Web-Development/jotter/modules/jotter-open-camera/android/src/main/AndroidManifest.xml:6:5-14:16
+13            android:name="expo.modules.jotteropencamera.JotterOpenCameraFileProvider"
+13-->/home/loxx_/Documents/Development/App-Web-Development/jotter/modules/jotter-open-camera/android/src/main/AndroidManifest.xml:7:7-51
+14            android:authorities="${applicationId}.jotteropencamera.fileprovider"
+14-->/home/loxx_/Documents/Development/App-Web-Development/jotter/modules/jotter-open-camera/android/src/main/AndroidManifest.xml:8:7-75
+15            android:exported="false"
+15-->/home/loxx_/Documents/Development/App-Web-Development/jotter/modules/jotter-open-camera/android/src/main/AndroidManifest.xml:9:7-31
+16            android:grantUriPermissions="true" >
+16-->/home/loxx_/Documents/Development/App-Web-Development/jotter/modules/jotter-open-camera/android/src/main/AndroidManifest.xml:10:7-41
+17            <meta-data
+17-->/home/loxx_/Documents/Development/App-Web-Development/jotter/modules/jotter-open-camera/android/src/main/AndroidManifest.xml:11:7-13:65
+18                android:name="android.support.FILE_PROVIDER_PATHS"
+18-->/home/loxx_/Documents/Development/App-Web-Development/jotter/modules/jotter-open-camera/android/src/main/AndroidManifest.xml:12:9-59
+19                android:resource="@xml/jotter_open_camera_file_paths" />
+19-->/home/loxx_/Documents/Development/App-Web-Development/jotter/modules/jotter-open-camera/android/src/main/AndroidManifest.xml:13:9-62
+20        </provider>
+21    </application>
+22
+23</manifest>

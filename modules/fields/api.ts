@@ -17,6 +17,8 @@ export type NewFieldInput = {
   name: string;
   dataType: FieldDataType;
   category?: CategoryRef;
+  isRequired?: boolean;
+  isSampleIdentifier?: boolean;
 };
 
 export type CategoryOption = {
@@ -140,12 +142,14 @@ export async function insertFieldWithCategory(
   }
 
   await db.runAsync(
-    'INSERT INTO fields (id, project_id, name, data_type, category_id, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    'INSERT INTO fields (id, project_id, name, data_type, category_id, is_required, is_sample_identifier, sort_order, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
     newId(),
     projectId,
     field.name,
     field.dataType,
     categoryId ?? null,
+    field.isRequired ? 1 : 0,
+    field.isSampleIdentifier ? 1 : 0,
     sortOrder,
     nowIso(),
   );

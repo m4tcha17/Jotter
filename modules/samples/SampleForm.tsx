@@ -4,7 +4,6 @@ import { ActivityIndicator, Alert, Modal, ScrollView, Text, TextInput, Touchable
 import { checkIdentifierDuplicate } from './api';
 import type { NewSampleValue } from './api';
 import type { ProjectField } from '../fields/api';
-import type { ManualExposureOptions } from 'jotter-camera';
 import CameraCaptureStep from '../camera/CameraCaptureStep';
 
 const INPUT_BASE = 'h-[56px] border-2 px-4 font-inter text-lg text-ink';
@@ -14,12 +13,11 @@ const CHIP_LABEL_BASE = 'font-inter-bold text-[13px] uppercase tracking-[1.2px]'
 type Props = {
   projectId: string;
   fields: ProjectField[];
-  cameraSettings: ManualExposureOptions | null;
   saving: boolean;
   onSave: (values: NewSampleValue[]) => void;
 };
 
-export default function SampleForm({ projectId, fields, cameraSettings, saving, onSave }: Props) {
+export default function SampleForm({ projectId, fields, saving, onSave }: Props) {
   const [values, setValues] = useState<Record<string, string>>({});
   const [focusedFieldId, setFocusedFieldId] = useState<string | null>(null);
   const [photoFieldOpen, setPhotoFieldOpen] = useState<ProjectField | null>(null);
@@ -220,7 +218,7 @@ export default function SampleForm({ projectId, fields, cameraSettings, saving, 
         {photoFieldOpen && (
           <CameraCaptureStep
             label={photoFieldOpen.name}
-            cameraSettings={cameraSettings}
+            onCancel={() => setPhotoFieldOpen(null)}
             onCapture={(uri) => {
               setValue(photoFieldOpen.id, uri);
               setPhotoFieldOpen(null);

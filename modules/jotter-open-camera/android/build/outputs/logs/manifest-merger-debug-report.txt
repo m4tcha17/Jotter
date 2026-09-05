@@ -1,0 +1,40 @@
+-- Merging decision tree log ---
+manifest
+ADDED from /home/loxx_/Documents/Development/App-Web-Development/jotter/modules/jotter-open-camera/android/src/main/AndroidManifest.xml:1:1-16:12
+INJECTED from /home/loxx_/Documents/Development/App-Web-Development/jotter/modules/jotter-open-camera/android/src/main/AndroidManifest.xml:1:1-16:12
+	package
+		INJECTED from /home/loxx_/Documents/Development/App-Web-Development/jotter/modules/jotter-open-camera/android/src/main/AndroidManifest.xml
+	xmlns:android
+		ADDED from /home/loxx_/Documents/Development/App-Web-Development/jotter/modules/jotter-open-camera/android/src/main/AndroidManifest.xml:1:11-69
+queries
+ADDED from /home/loxx_/Documents/Development/App-Web-Development/jotter/modules/jotter-open-camera/android/src/main/AndroidManifest.xml:2:3-4:13
+package#net.sourceforge.opencamera
+ADDED from /home/loxx_/Documents/Development/App-Web-Development/jotter/modules/jotter-open-camera/android/src/main/AndroidManifest.xml:3:5-58
+	android:name
+		ADDED from /home/loxx_/Documents/Development/App-Web-Development/jotter/modules/jotter-open-camera/android/src/main/AndroidManifest.xml:3:14-55
+application
+ADDED from /home/loxx_/Documents/Development/App-Web-Development/jotter/modules/jotter-open-camera/android/src/main/AndroidManifest.xml:5:3-15:17
+provider#expo.modules.jotteropencamera.JotterOpenCameraFileProvider
+ADDED from /home/loxx_/Documents/Development/App-Web-Development/jotter/modules/jotter-open-camera/android/src/main/AndroidManifest.xml:6:5-14:16
+	android:grantUriPermissions
+		ADDED from /home/loxx_/Documents/Development/App-Web-Development/jotter/modules/jotter-open-camera/android/src/main/AndroidManifest.xml:10:7-41
+	android:authorities
+		ADDED from /home/loxx_/Documents/Development/App-Web-Development/jotter/modules/jotter-open-camera/android/src/main/AndroidManifest.xml:8:7-75
+	android:exported
+		ADDED from /home/loxx_/Documents/Development/App-Web-Development/jotter/modules/jotter-open-camera/android/src/main/AndroidManifest.xml:9:7-31
+	android:name
+		ADDED from /home/loxx_/Documents/Development/App-Web-Development/jotter/modules/jotter-open-camera/android/src/main/AndroidManifest.xml:7:7-51
+meta-data#android.support.FILE_PROVIDER_PATHS
+ADDED from /home/loxx_/Documents/Development/App-Web-Development/jotter/modules/jotter-open-camera/android/src/main/AndroidManifest.xml:11:7-13:65
+	android:resource
+		ADDED from /home/loxx_/Documents/Development/App-Web-Development/jotter/modules/jotter-open-camera/android/src/main/AndroidManifest.xml:13:9-62
+	android:name
+		ADDED from /home/loxx_/Documents/Development/App-Web-Development/jotter/modules/jotter-open-camera/android/src/main/AndroidManifest.xml:12:9-59
+uses-sdk
+INJECTED from /home/loxx_/Documents/Development/App-Web-Development/jotter/modules/jotter-open-camera/android/src/main/AndroidManifest.xml reason: use-sdk injection requested
+INJECTED from /home/loxx_/Documents/Development/App-Web-Development/jotter/modules/jotter-open-camera/android/src/main/AndroidManifest.xml
+INJECTED from /home/loxx_/Documents/Development/App-Web-Development/jotter/modules/jotter-open-camera/android/src/main/AndroidManifest.xml
+	android:targetSdkVersion
+		INJECTED from /home/loxx_/Documents/Development/App-Web-Development/jotter/modules/jotter-open-camera/android/src/main/AndroidManifest.xml
+	android:minSdkVersion
+		INJECTED from /home/loxx_/Documents/Development/App-Web-Development/jotter/modules/jotter-open-camera/android/src/main/AndroidManifest.xml
