@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="expo.modules.jotteropencamera" >
+
+    <uses-sdk android:minSdkVersion="24" />
+
+    <queries>
+        <package android:name="net.sourceforge.opencamera" />
+    </queries>
+
+    <application>
+        <provider
+            android:name="expo.modules.jotteropencamera.JotterOpenCameraFileProvider"
+            android:authorities="${applicationId}.jotteropencamera.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true" >
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/jotter_open_camera_file_paths" />
+        </provider>
+    </application>
+
+</manifest>

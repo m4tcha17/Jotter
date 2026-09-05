@@ -1,0 +1,1 @@
+int xml jotter_open_camera_file_paths 0x0

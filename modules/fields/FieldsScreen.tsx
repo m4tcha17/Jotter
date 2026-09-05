@@ -119,9 +119,21 @@ export default function FieldsScreen({ route }: Props) {
           renderItem={({ item: field }) => (
             <View className="flex-row items-center justify-between bg-surface-card px-4 py-3">
               <View className="flex-shrink pr-3">
-                <Text className="font-inter-bold text-base text-body-strong" numberOfLines={1}>
-                  {field.name}
-                </Text>
+                <View className="flex-row items-center gap-2">
+                  <Text className="font-inter-bold text-base text-body-strong" numberOfLines={1}>
+                    {field.name}
+                  </Text>
+                  {field.is_required && (
+                    <Text className="font-inter-bold text-xs uppercase tracking-[1.2px] text-destructive">
+                      Required
+                    </Text>
+                  )}
+                  {field.is_sample_identifier && (
+                    <Text className="font-inter-bold text-xs uppercase tracking-[1.2px] text-muted">
+                      ID
+                    </Text>
+                  )}
+                </View>
                 <Text className="font-inter text-sm text-muted">
                   {DATA_TYPE_LABELS[field.data_type]}
                   {field.category ? ` · ${field.category.name}` : ''}
